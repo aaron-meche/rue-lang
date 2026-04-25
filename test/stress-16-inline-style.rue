@@ -1,1 +1,1 @@
-.element { background: red; }
+.element { background: red; color: white; .child { color: blue; .label { font-weight: 700; } } }

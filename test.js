@@ -196,6 +196,9 @@ function main(testToRun = "all") {
             path: "./test/stress-16-inline-style.rue",
             contains: [
                 ".element{\n\tbackground: red;",
+                "color: white;",
+                ".element .child{\n\tcolor: blue;",
+                ".element .child .label{\n\tfont-weight: 700;",
             ],
         },
         {

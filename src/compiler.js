@@ -222,16 +222,75 @@ export class RueFile {
         let curMapID = this.#mapID()
         if (!this.#map[curMapID]) this.#map[curMapID] = []
 
-        if (body) {
-            let declarations = body.split(";")
-            for (let i = 0; i < declarations.length; i++) {
-                let declaration = declarations[i].trim()
-                if (!declaration) continue
-                this.#map[curMapID].push(this.#resolveString(declaration + ";"))
+        if (body) this.#processInlineStyleBody(body)
+
+        this.#layers.pop()
+    }
+
+    #processInlineStyleBody(body) {
+        let buffer = ""
+
+        for (let i = 0; i < body.length; i++) {
+            let char = body[i]
+
+            if (char == "{") {
+                let parts = buffer.split(";")
+                let selector = parts.pop().trim()
+                this.#processInlineDeclarations(parts.join(";"))
+
+                if (!selector) {
+                    this.#addError("layer", "invalid nested inline style selector")
+                    buffer = ""
+                    continue
+                }
+
+                let closeIndex = this.#findInlineCloseBrace(body, i)
+                if (closeIndex == -1) {
+                    this.#addError("layer", "unclosed inline style block")
+                    return
+                }
+
+                this.#layers.push(selector)
+                let curMapID = this.#mapID()
+                if (!this.#map[curMapID]) this.#map[curMapID] = []
+                this.#processInlineStyleBody(body.slice(i + 1, closeIndex).trim())
+                this.#layers.pop()
+
+                buffer = ""
+                i = closeIndex
+            }
+            else {
+                buffer += char
             }
         }
 
-        this.#layers.pop()
+        this.#processInlineDeclarations(buffer)
+    }
+
+    #processInlineDeclarations(string) {
+        let declarations = string.split(";")
+        let curMapID = this.#mapID()
+        if (!this.#map[curMapID]) this.#map[curMapID] = []
+
+        for (let i = 0; i < declarations.length; i++) {
+            let declaration = declarations[i].trim()
+            if (!declaration) continue
+            this.#map[curMapID].push(this.#resolveString(declaration + ";"))
+        }
+    }
+
+    #findInlineCloseBrace(body, openIndex) {
+        let depth = 0
+
+        for (let i = openIndex; i < body.length; i++) {
+            if (body[i] == "{") depth++
+            else if (body[i] == "}") {
+                depth--
+                if (depth == 0) return i
+            }
+        }
+
+        return -1
     }
 
     #mapID() { return this.#layers.join(" ")?.replaceAll(" :", ":") }
