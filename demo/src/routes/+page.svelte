@@ -7,7 +7,7 @@
     <h1>Nested CSS with JS integration.</h1>
     <p class="caption">Edit the "Rue Source" and watch this live preview update instantly.</p>
     <div class="actions">
-        <a href="https://github.com/aaron-meche/rue-lang-compiler#readme">Read Docs</a>
+        <a href="https://github.com/aaron-meche/rue-lang#readme">Read Docs</a>
         <a href="https://www.npmjs.com/package/rue-lang" class="ghost">View NPM</a>
     </div>
     <section class="feature-grid">
@@ -168,7 +168,7 @@ body{
 			<h1>Rue Language</h1>
 			<p>written by Aaron Meche</p>
 		</div>
-		<a class="repo-link" href="https://github.com/aaron-meche/rue-lang-compiler">GitHub</a>
+		<a class="repo-link" href="https://github.com/aaron-meche/rue-lang">GitHub</a>
 	</header>
 
 	<section class="workspace" aria-label="Rue live compiler demo">

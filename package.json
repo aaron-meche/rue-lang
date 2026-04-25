@@ -10,13 +10,13 @@
 		"stylesheet",
 		"web"
 	],
-	"homepage": "https://github.com/aaron-meche/rue-lang-compiler#readme",
+	"homepage": "https://github.com/aaron-meche/rue-lang#readme",
 	"bugs": {
-		"url": "https://github.com/aaron-meche/rue-lang-compiler/issues"
+		"url": "https://github.com/aaron-meche/rue-lang/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/aaron-meche/rue-lang-compiler.git"
+		"url": "https://github.com/aaron-meche/rue-lang.git"
 	},
 	"license": "MIT",
 	"author": "aaronmeche",
