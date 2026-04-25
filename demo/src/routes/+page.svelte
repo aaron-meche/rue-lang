@@ -154,7 +154,7 @@ body{
 </script>
 
 <svelte:head>
-	<title>Rue Language Demo</title>
+	<title>Rue Language</title>
 	<meta
 		name="description"
 		content="A live Rue stylesheet language playground showing nested CSS, variables, functions, and inline nested styles."
