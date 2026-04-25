@@ -1,0 +1,12 @@
+_size_: 2
+
+func rem(value) {
+    return value + "rem"
+}
+
+def space: rem(_size_);
+
+.mixed{
+    padding: var(--space);
+    margin: rem(1);
+}

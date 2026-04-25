@@ -17,6 +17,7 @@ export declare class RueFile {
 	run(): void
 	print(): void
 	getCSS(): string
+	getErrors(): string[]
 	output(path: string): void
 }
 

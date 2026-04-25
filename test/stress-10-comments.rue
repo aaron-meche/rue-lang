@@ -1,0 +1,9 @@
+// .hidden{
+//     color: red;
+// }
+
+<!-- ignored -->
+
+.shown{
+    color: green;
+}

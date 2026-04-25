@@ -6,6 +6,8 @@
 //
 import { RueFile } from './compiler.js'
 
+export { RueFile }
+
 export default function runRue() {
     return {
         style({ content, attributes }) {

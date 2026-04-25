@@ -1,0 +1,15 @@
+.app{
+    display: grid;
+
+    .shell{
+        min-height: 100vh;
+
+        .panel{
+            padding: 1rem;
+
+            .title{
+                font-weight: 700;
+            }
+        }
+    }
+}

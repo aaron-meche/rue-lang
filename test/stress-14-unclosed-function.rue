@@ -1,0 +1,6 @@
+func incomplete(value) {
+    return value
+
+.after{
+    color: red;
+}

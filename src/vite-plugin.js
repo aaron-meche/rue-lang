@@ -10,7 +10,7 @@ export default function ruePlugin() {
         enforce: 'pre',
 
         resolveId(id, importer) {
-            if (id.endsWith('. rue')) {
+            if (id.endsWith('.rue')) {
                 return path.resolve(path.dirname(importer), id)
             }
         },

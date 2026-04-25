@@ -24,7 +24,7 @@
 	"types": "./index.d.ts",
 	"main": "src/index.js",
 	"scripts": {
-		"test": "compile",
+		"test": "node test.js",
 		"dev": "node --watch --watch-path=./test/gamesage.rue --watch-path=./test.js --watch-path=./src/compiler.js test.js"
 	}
 }

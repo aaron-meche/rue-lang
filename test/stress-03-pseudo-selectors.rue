@@ -1,0 +1,11 @@
+.button{
+    color: white;
+
+    :hover{
+        color: red;
+    }
+
+    :focus-visible{
+        outline: solid 2px blue;
+    }
+}

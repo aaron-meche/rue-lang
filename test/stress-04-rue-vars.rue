@@ -1,0 +1,9 @@
+_hue_: 220
+_sat_: 80%
+_light_: 50%
+
+def hue: _hue_;
+
+.swatch{
+    color: hsl(_hue_, _sat_, _light_);
+}
