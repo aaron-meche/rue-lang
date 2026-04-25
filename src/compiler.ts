@@ -1,9 +1,10 @@
 // 
-// Rue Programming Language
 // Compiler
 //
+// Rue Lang
 // by Aaron Meche
 //
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,47 +12,73 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __sysDir = path.dirname(__filename);
 
+export type RueCSSMap = Record<string, string[]>
+export type RueVarMap = Record<string, string>
+export type RueCallable = (...params: string[]) => unknown
+
+export interface RueFunctionCall {
+    name: string
+    params: string[]
+    call: string
+}
+
+export interface RueFunctionSignature {
+    name: string
+    params: string[]
+    call?: string
+}
+
+export interface RueFunctionDefinition {
+    name: string
+    params: string[]
+    body: string[]
+    function: RueCallable
+}
+
+export type RueFunctionMap = Record<string, RueFunctionDefinition>
+
 // Read File Text Content
-function readFileText(filePath) { 
+function readFileText(filePath: string): string { 
     try {
         const content = fs.readFileSync(filePath, 'utf8');
         return content;
     } catch (error) {
-        console.error("read file: " + error.message)
+        let message = error instanceof Error ? error.message : String(error)
+        console.error("read file: " + message)
         return ""
     }
 }
 
 // Write File Text Content
-function writeFileText(filePath, fileContent) {
+function writeFileText(filePath: string, fileContent: string): void {
     const dir = path.dirname(filePath)
     if (dir && dir != ".") fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(filePath, fileContent)
 }
 
 export class RueFile {
-    #txt = null
-    #layers = []
-    #map = { ":root": [] }
-    #var = {}
-    #func = {}
-    #css = []
+    #txt: string | null = null
+    #layers: string[] = []
+    #map: RueCSSMap = {}
+    #var: RueVarMap = {}
+    #func: RueFunctionMap = {}
+    #css: string[] = []
 
-    #inFunc = false
-    #funcSignature = null
-    #funcBody = []
-    #funcDepth = 0
+    #inFunc: boolean = false
+    #funcSignature: RueFunctionSignature | null = null
+    #funcBody: string[] = []
+    #funcDepth: number = 0
 
-    #errors = []
+    #errors: string[] = []
 
     // Read from filepath, parse and compile
-    constructor(filepath, doNotCompile = false) {
+    constructor(filepath?: string, doNotCompile: boolean = false) {
         if (!filepath) return
         this.feed(readFileText(filepath), doNotCompile)
     }
 
     // Force feed strinb instead of filepath
-    feed(string, doNotCompile) {
+    feed(string: string, doNotCompile?: boolean): void {
         this.#txt = typeof string == "string" ? string : ""
 
         if (doNotCompile) return
@@ -59,13 +86,13 @@ export class RueFile {
     }
 
     // Parse and Compile stored text
-    run() {
+    run(): void {
         this.#resetOutput()
         this.#parse()
         this.#compile()
     }
 
-    #resetOutput() {
+    #resetOutput(): void {
         this.#layers = []
         this.#map = { ":root": [] }
         this.#var = {}
@@ -79,19 +106,19 @@ export class RueFile {
         this.#errors = []
     }
 
-    #addError(label, error) {
-        let message = error?.message || error
+    #addError(label: string, error: unknown): void {
+        let message = error instanceof Error ? error.message : String(error)
         this.#errors.push(label + ": " + message)
         console.error(label + ": " + message)
     }
 
     // Iterate and process all lines
-    #parse() {
+    #parse(): void {
         let lineSplitText = this.#txt?.split("\n")
         if (!lineSplitText) return
         for (let i = 0; i < lineSplitText.length; i++) {
             try {
-                this.#processLine(lineSplitText[i].trim())
+                this.#processLine(this.#stripLineComment(lineSplitText[i]).trim())
             }
             catch (error) {
                 this.#addError("line " + (i + 1), error)
@@ -111,7 +138,7 @@ export class RueFile {
     }
 
     // Build CSS file from map
-    #compile() {
+    #compile(): void {
         for (let i = 0; i < Object.keys(this.#map).length; i++) {
             this.#css.push(Object.keys(this.#map)[i] + "{")
             this.#css.push("\t" + (Object.values(this.#map)[i] || []).join("\n\t"))
@@ -120,7 +147,7 @@ export class RueFile {
     }
 
     // Interpret each line, building map
-    #processLine(line) {
+    #processLine(line: string): void {
         if (!line) return
 
         let lastChar = line[line.length - 1]
@@ -131,23 +158,41 @@ export class RueFile {
         if (firstWord == "<!--") return
 
         // Function Capture Mode
-        if (this.#inFunc) this.#processFunctionCaptureLine(line, lastChar)
+        if (this.#inFunc)   this.#processFunctionCaptureLine(line, lastChar)
         // Style Capture Mode
-        else this.#processStyleCaptureLine(line, lastChar, firstChar, firstWord)
+        else                this.#processStyleCaptureLine(line, lastChar, firstChar, firstWord)
     }
 
-    #processFunctionCaptureLine(line, lastChar) {
+    #stripLineComment(line: string): string {
+        let quote: string | null = null
+        let escaped = false
+
+        for (let i = 0; i < line.length; i++) {
+            let char = line[i]
+            let nextChar = line[i + 1]
+
+            if (escaped) { escaped = false; continue }
+            if (char == "\\") { escaped = true; continue }
+            if (quote && char == quote) { quote = null; continue; }
+            if (char == "\"" || char == "'" || char == "`") { quote = char; continue }
+            if (!quote && char == "/" && nextChar == "/") return line.slice(0, i)
+        }
+
+        return line
+    }
+
+    #processFunctionCaptureLine(line: string, lastChar: string): void {
         // Nested function
         if (lastChar == "{") {
             this.#funcDepth++
-            this.#funcBody.push(line)
+            this.#funcBody.push(this.#resolveJavascriptLine(line))
         }
         // Close function
         else if (line == "}") {
             // If closing nested function
             if (this.#funcDepth != 0) {
                 this.#funcDepth--
-                this.#funcBody.push(line)
+                this.#funcBody.push(this.#resolveJavascriptLine(line))
             }
             // If closing main function
             else {
@@ -159,7 +204,7 @@ export class RueFile {
                         name: this.#funcSignature.name,
                         params: params,
                         body: this.#funcBody,
-                        function: new Function(...params, this.#funcBody.join("\n")),
+                        function: new Function(...params, this.#funcBody.join("\n")) as RueCallable,
                     }
                 }
                 catch (error) {
@@ -173,46 +218,46 @@ export class RueFile {
         }
         // Add new line to function
         else {
-            this.#funcBody.push(line)
+            this.#funcBody.push(this.#resolveJavascriptLine(line))
         }
     }
 
-    #processStyleCaptureLine(line, lastChar, firstChar, firstWord) {
+    #processStyleCaptureLine(line: string, lastChar: string, firstChar: string, firstWord: string): void {
+        // Function Decl    e.g. : func name(params) {
         if (firstWord == "func") {
             let functionCalls = this.#extractFunctionCalls(line)
             if (!functionCalls?.[0]) return this.#addError("func", "invalid function signature")
             this.#inFunc = true
             this.#funcSignature = functionCalls[0]
-        } // Inline Layer
+        } 
+        // Inline Layer     e.g. : elem { background: red }
         else if (line.includes("{") && line.includes("}")) {
             this.#processInlineStyleLine(line)
-        } // New Layer
+        } 
+        // New Layer        e.g. : elem {
         else if (line.includes("{")) {
             this.#layers.push(line.replace("{", "").trim())
             this.#map[this.#mapID()] = []
-        } // Close Layer
+        } 
+        // Close Layer      e.g. : }
         else if (line == "}") {
             if (this.#layers.length) this.#layers.pop()
             else this.#addError("layer", "unexpected closing brace")
-        } // Variable Definition
-        else if (firstWord == "def") {
-            this.#map[":root"].push(this.#resolveString(line))
-        } // Rue Variables
-        else if (firstChar == "_") {
-            let varName = line.split(":")[0].replaceAll("_", "").trim()
-            let varValue = line.slice(line.indexOf(":") + 1).trim()
-            if (!line.includes(":") || !varName) return this.#addError("var", "invalid variable definition")
-            this.#var[varName] = this.#resolveString(varValue)
-            // this.#var[this.firstWord.re]
-        } // Key: Value
+        } 
+        // Variable Def     e.g. : def name: val  ||  _name_: val
+        else if (firstWord == "def" || firstChar == "_") {
+            this.#defineRueVar(line)
+        } 
+        // Key: Value       e.g. : background: red
         else if (line.includes(":")) {
             let curMapID = this.#mapID() || ":root"
             if (!this.#map[curMapID]) this.#map[curMapID] = []
-            this.#map[curMapID].push(this.#resolveString(line))
+            this.#map[curMapID].push(this.#resolveString(this.#ensureSemicolon(line)))
         }
     }
 
-    #processInlineStyleLine(line) {
+    // e.g. : elem { background: red }
+    #processInlineStyleLine(line: string): void {
         let selector = line.slice(0, line.indexOf("{")).trim()
         let body = line.slice(line.indexOf("{") + 1, line.lastIndexOf("}")).trim()
 
@@ -227,7 +272,8 @@ export class RueFile {
         this.#layers.pop()
     }
 
-    #processInlineStyleBody(body) {
+    // e.g. : elem { background: red; color: blue }
+    #processInlineStyleBody(body: string): void {
         let buffer = ""
 
         for (let i = 0; i < body.length; i++) {
@@ -235,7 +281,7 @@ export class RueFile {
 
             if (char == "{") {
                 let parts = buffer.split(";")
-                let selector = parts.pop().trim()
+                let selector = (parts.pop() || "").trim()
                 this.#processInlineDeclarations(parts.join(";"))
 
                 if (!selector) {
@@ -267,11 +313,10 @@ export class RueFile {
         this.#processInlineDeclarations(buffer)
     }
 
-    #processInlineDeclarations(string) {
+    #processInlineDeclarations(string: string): void {
         let declarations = string.split(";")
         let curMapID = this.#mapID()
         if (!this.#map[curMapID]) this.#map[curMapID] = []
-
         for (let i = 0; i < declarations.length; i++) {
             let declaration = declarations[i].trim()
             if (!declaration) continue
@@ -279,9 +324,8 @@ export class RueFile {
         }
     }
 
-    #findInlineCloseBrace(body, openIndex) {
+    #findInlineCloseBrace(body: string, openIndex: number): number {
         let depth = 0
-
         for (let i = openIndex; i < body.length; i++) {
             if (body[i] == "{") depth++
             else if (body[i] == "}") {
@@ -289,36 +333,63 @@ export class RueFile {
                 if (depth == 0) return i
             }
         }
-
         return -1
     }
 
-    #mapID() { return this.#layers.join(" ")?.replaceAll(" :", ":") }
+    #mapID(): string { return this.#layers.join(" ")?.replaceAll(" :", ":") }
+
+    #defineRueVar(line: string): void {
+        if (line.split(" ")[0] == "def") line = line.replace("def ", "")
+        let varName = line.split(":")[0].replaceAll("_", "").trim()
+        let varValue = this.#stripSemicolon(line.slice(line.indexOf(":") + 1).trim())
+        if (!line.includes(":") || !varName) return this.#addError("var", "invalid variable definition")
+
+        let resolvedValue = this.#resolveString(varValue)
+        this.#var[varName] = resolvedValue
+
+        let rootLine = "--" + varName + ": " + resolvedValue
+        this.#map[":root"].push(this.#ensureSemicolon(rootLine))
+    }
+
+    #ensureSemicolon(line: string): string {
+        if (line.trim().endsWith(";")) return line
+        return line + ";"
+    }
+
+    #stripSemicolon(line: string): string {
+        if (line.trim().endsWith(";")) return line.trim().slice(0, -1).trim()
+        return line
+    }
+
+    #resolveJavascriptLine(line: string): string {
+        if (line.includes("_")) return this.#handleRueVarCalls(line)
+        return line
+    }
 
     // Handle var definitions + function calls
-    #resolveString(line) {
+    #resolveString(line: string): string {
         let charSplit = line.split("")
         let wordSplit = line.split(" ")
         // Variable Definition
         if (wordSplit[0] == "def") {
             line = line?.replace("def ", "--")
         }
-        // Function Call
-        if (charSplit.includes("(") && charSplit.includes(")")) {
-            line = this.#handleFunctionCalls(line)
-        }
         if (charSplit.includes("_")) {
             line = this.#handleRueVarCalls(line)
+        }
+        // Function Call
+        if (line.includes("(") && line.includes(")")) {
+            line = this.#handleFunctionCalls(line)
         }
         return line
     }
 
-    #extractFunctionCalls(str) {
+    #extractFunctionCalls(str: string): RueFunctionCall[] | null {
         if (!str.includes("(")) return null
         let numOfLParen = str.split("(").length - 1
         let indexOfLParen = null
-        let functions = []
-        let currFunc = { name: "", params: "", call: "" }
+        let functions: RueFunctionCall[] = []
+        let currFunc: { name: string, params: string, call: string } = { name: "", params: "", call: "" }
         for (let i = 0; i < numOfLParen; i++) {
             indexOfLParen = str.indexOf("(")
             // Capture BEHIND (function name)
@@ -338,18 +409,18 @@ export class RueFile {
                 else break
             }
             currFunc.call = currFunc.name + "(" + currFunc.params + ")"
-            currFunc.params = currFunc.params
+            let params = currFunc.params
                 ?.split(",")
                 .map((param) => param.trim())
                 .filter((param) => param)
-            functions.push(currFunc)
+            functions.push({ name: currFunc.name, params, call: currFunc.call })
             currFunc = { name: "", params: "", call: "" }
             str = str.replace("(", "_")
         }
         return functions
     }
 
-    #handleFunctionCalls(str) {
+    #handleFunctionCalls(str: string): string {
         let extractedCalls = this.#extractFunctionCalls(str)
         if (!extractedCalls) return str
         for (let i = 0; i < extractedCalls.length; i++) {
@@ -361,7 +432,7 @@ export class RueFile {
             if (func) {
                 try {
                     let funcCallValue = func.function(...parameters)
-                    str = str.replace(funcCallStr, funcCallValue)
+                    str = str.replace(funcCallStr, String(funcCallValue))
                 }
                 catch (error) {
                     this.#addError("handleFunctionCalls", error)
@@ -372,29 +443,19 @@ export class RueFile {
     }
 
     // in development
-    #handleJavascriptContext(lineArr) {
+    #handleJavascriptContext(lineArr: string[]): string[] {
         for (let i = 0; i < lineArr.length; i++) {
             let calls = this.#extractFunctionCalls(lineArr[i])
             if (!calls) continue
             for (let i = 0; i < calls.length; i++) {
                 let foundFunc = this.#func?.[calls[i].name]
                 if (!foundFunc) continue
-                else {
-                    let contextStr = `const ${foundFunc.name} = (${foundFunc.params}) => {\n${foundFunc.body}\n}`
-                    // lineArr = [contextStr, ...lineArr]
-                    // lineArr = lineArr.unshift(contextStr)
-                }
             }
-            // if (this.#func?.[found.name]) {
-            //     const foundFuncObj = this.#func[found.name]
-            //     const contextStr = `const ${foundFuncObj.name} = (${foundFuncObj.params.join(",")}) => { ${this.handleInteriorJavascriptCalls(foundFuncObj.body)} }`
-            //     body.unshift(contextStr)
-            // }
         }
         return lineArr
     }
 
-    #handleRueVarCalls(line) {
+    #handleRueVarCalls(line: string): string {
         let curVarName = ""
         for (let i = line.indexOf("_") + 1; i < line.length; i++) {
             if (line[i] == "_") break
@@ -408,8 +469,8 @@ export class RueFile {
             return line
     }
 
-    print() { console.log(this.#css.join("\n")) }
-    getCSS() { return this.#css.join("\n") }
-    getErrors() { return this.#errors }
-    output(path) { writeFileText(path, this.#css.join("\n")) }
+    print(): void { console.log(this.#css.join("\n")) }
+    getCSS(): string { return this.#css.join("\n") }
+    getErrors(): string[] { return this.#errors }
+    output(path: string): void { writeFileText(path, this.#css.join("\n")) }
 }

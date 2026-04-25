@@ -1,6 +1,6 @@
 # Rue Stylesheet Language
 
-Rue is a small stylesheet language for writing nested CSS with lightweight variables and custom JavaScript-powered helpers.
+Rue is a small stylesheet language for writing CSS with nested selectors, compile-time variables, CSS custom properties, and simple helper functions.
 
 Created by Aaron Meche.
 
@@ -16,12 +16,12 @@ npm install rue-lang
 import { RueFile } from "rue-lang";
 
 const file = new RueFile("./styles.rue");
-const css = file.getCSS();
 
+console.log(file.getCSS());
 file.output("./dist/styles.css");
 ```
 
-You can also feed Rue source directly:
+You can also compile a string directly:
 
 ```js
 import { RueFile } from "rue-lang";
@@ -29,11 +29,8 @@ import { RueFile } from "rue-lang";
 const file = new RueFile();
 
 file.feed(`
-def bg: black;
-
 body{
     margin: 0;
-    background: var(--bg);
 }
 `);
 
@@ -42,30 +39,16 @@ console.log(file.getCSS());
 
 ## Rue Syntax
 
-### CSS Variables
-
-Use `def` to write CSS custom properties into `:root`.
-
-```rue
-def bg: black;
-def accent: blue;
-
-body{
-    background: var(--bg);
-    color: var(--accent);
-}
-```
-
 ### Nested Selectors
 
-Selectors can be nested with braces. Rue joins parent and child selectors into normal CSS selectors.
+Rue lets you nest selectors inside other selectors.
 
 ```rue
-.page{
-    margin: 0 auto;
+.card{
+    padding: 1rem;
 
     .title{
-        font-size: 2rem;
+        font-weight: 700;
     }
 }
 ```
@@ -76,39 +59,113 @@ Compiles to:
 :root{
 	
 }
-.page{
-	margin: 0 auto;
+.card{
+	padding: 1rem;
 }
-.page .title{
-	font-size: 2rem;
+.card .title{
+	font-weight: 700;
+}
+```
+
+Inline style blocks are supported too:
+
+```rue
+.card { padding: 1rem; .title { font-weight: 700; } }
+```
+
+### CSS Custom Properties
+
+Use `def` when you want to create a real CSS custom property in `:root`.
+
+```rue
+def bg: black;
+def accent: royalblue;
+
+body{
+    background: var(--bg);
+    color: var(--accent);
+}
+```
+
+That compiles to CSS like:
+
+```css
+:root{
+	--bg: black;
+	--accent: royalblue;
 }
 ```
 
 ### Rue Variables
 
-Rue variables are defined with `_name_:` and called with `_name_`.
+Use `_name_:` when you want a Rue-only compile-time variable. Rue variables do not appear in the final CSS by themselves. They are replaced before CSS is output.
 
 ```rue
-_hue_: 220
+_brand_: royalblue
+_space_: 1rem
 
-def hue: _hue_;
-
-.button{
-    color: hsl(_hue_, 80%, 50%);
+button{
+    color: _brand_;
+    padding: _space_;
 }
 ```
 
-### Functions
+Compiles to:
 
-Rue supports simple custom functions inside `.rue` files.
+```css
+button{
+	color: royalblue;
+	padding: 1rem;
+}
+```
+
+### `def` vs `_var_`
+
+They solve different problems:
+
+`def name: value;` creates a CSS variable:
 
 ```rue
-func double(value) {
-    return value * 2
+def brand: royalblue;
+
+button{
+    color: var(--brand);
+}
+```
+
+`_name_: value` creates a Rue variable:
+
+```rue
+_brand_: royalblue
+
+button{
+    color: _brand_;
+}
+```
+
+Use `def` when you want the value available to browser CSS at runtime through `var(--name)`. Use `_name_` when you only want Rue to substitute the value while compiling.
+
+You can also use a Rue variable inside a `def`:
+
+```rue
+_brand_: royalblue
+
+def brand: _brand_;
+```
+
+This lets Rue decide the value while still emitting a CSS custom property.
+
+### Functions
+
+Rue supports simple helper functions inside `.rue` files.
+
+```rue
+func doublePx(value) {
+    return value * 2 + "px"
 }
 
 .box{
-    width: double(10)px;
+    width: doublePx(10);
 }
 ```
 
@@ -145,7 +202,7 @@ export default {
 Rue also includes a Vite plugin for importing `.rue` files.
 
 ```js
-import ruePlugin from "rue-lang/src/vite-plugin.js";
+import ruePlugin from "rue-lang/vite-plugin";
 
 export default {
     plugins: [
@@ -167,6 +224,21 @@ const file = new RueFile("./styles.rue");
 
 console.log(file.getCSS());
 console.log(file.getErrors());
+```
+
+## Development
+
+Rue is written in TypeScript and compiled to `dist/` for npm publishing.
+
+```bash
+npm run build
+npm test
+```
+
+Run the local demo site:
+
+```bash
+npm run demo:dev
 ```
 
 ## Project Goal

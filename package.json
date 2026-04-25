@@ -1,7 +1,7 @@
 {
 	"name": "rue-lang",
-	"version": "1.1.1",
-	"description": "Rue Stylesheet Language, css with nested styles and advanced variables",
+	"version": "1.2.1",
+	"description": "Rue Stylesheet Language, css with nested styles, better variables, and JS integration",
 	"keywords": [
 		"rue",
 		"css",
@@ -21,10 +21,41 @@
 	"license": "MIT",
 	"author": "aaronmeche",
 	"type": "module",
-	"types": "./index.d.ts",
-	"main": "src/index.js",
+	"types": "./dist/src/index.d.ts",
+	"main": "./dist/src/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/src/index.js"
+		},
+		"./vite-plugin": {
+			"types": "./dist/src/vite-plugin.d.ts",
+			"import": "./dist/src/vite-plugin.js"
+		},
+		"./src/compiler.js": {
+			"types": "./dist/src/compiler.d.ts",
+			"import": "./dist/src/compiler.js"
+		},
+		"./src/vite-plugin.js": {
+			"types": "./dist/src/vite-plugin.d.ts",
+			"import": "./dist/src/vite-plugin.js"
+		}
+	},
+	"files": [
+		"dist/src",
+		"README.md"
+	],
 	"scripts": {
-		"test": "node test.js",
-		"dev": "node --watch --watch-path=./test/gamesage.rue --watch-path=./test.js --watch-path=./src/compiler.js test.js"
+		"build": "tsc",
+		"test": "npm run build && node dist/test.js",
+		"dev": "tsc --watch",
+		"demo:dev": "npm --prefix demo run dev",
+		"demo:build": "npm --prefix demo run build",
+		"demo:check": "npm --prefix demo run check",
+		"prepublishOnly": "npm test"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.0",
+		"typescript": "^6.0.2"
 	}
 }

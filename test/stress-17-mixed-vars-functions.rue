@@ -7,6 +7,6 @@ func rem(value) {
 def space: rem(_size_);
 
 .mixed{
-    padding: var(--space);
+    padding: _space_;
     margin: rem(1);
 }

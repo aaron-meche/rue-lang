@@ -1,0 +1,11 @@
+_hue_: 175
+
+func brandColor(sat, light) {
+    return "hsl(" + _hue_ + ", " + sat + "%, " + light + "%)"
+}
+
+def brand: brandColor(75, 50)
+
+.uses-js-var{
+    color: brandColor(60, 40)
+}

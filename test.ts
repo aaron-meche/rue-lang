@@ -1,5 +1,5 @@
 //
-// test.js
+// test.ts
 // 
 // Testing script for
 // running Rue compiler
@@ -8,12 +8,33 @@
 import assert from "node:assert/strict";
 import { RueFile } from "./src/compiler.js";
 
-function compileFixture(path) {
-    let errors = []
+interface TestResult {
+    css: string
+    errors: string[]
+    loggedErrors: string[]
+    instance: RueFile
+}
+
+interface TestCase {
+    name: string
+    path: string
+    contains?: string[]
+    errors?: string[]
+    assert?: (result: TestResult) => void
+}
+
+interface TestFailure {
+    name: string
+    path: string
+    message: string
+}
+
+function compileFixture(path: string): TestResult {
+    let errors: string[] = []
     let oldConsoleError = console.error
 
-    console.error = (...args) => errors.push(args.join(" "))
-    let rueInstance
+    console.error = (...args: unknown[]) => errors.push(args.join(" "))
+    let rueInstance: RueFile
 
     try {
         rueInstance = new RueFile(path)
@@ -30,38 +51,40 @@ function compileFixture(path) {
     }
 }
 
-function assertContains(css, expected, name) {
+function assertContains(css: string, expected: string, name: string): void {
     assert.ok(
         css.includes(expected),
         name + " expected CSS to include:\n" + expected + "\n\nActual CSS:\n" + css
     )
 }
 
-function runCase(test) {
+function runCase(test: TestCase): TestResult {
     let result = compileFixture(test.path)
+    let contains = test.contains || []
+    let errors = test.errors || []
 
     if (test.assert) test.assert(result)
 
-    for (let i = 0; i < (test.contains || []).length; i++) {
-        assertContains(result.css, test.contains[i], test.name)
+    for (let i = 0; i < contains.length; i++) {
+        assertContains(result.css, contains[i], test.name)
     }
 
-    for (let i = 0; i < (test.errors || []).length; i++) {
+    for (let i = 0; i < errors.length; i++) {
         assert.ok(
-            result.errors.some((error) => error.includes(test.errors[i])),
-            test.name + " expected error containing: " + test.errors[i]
+            result.errors.some((error) => error.includes(errors[i])),
+            test.name + " expected error containing: " + errors[i]
         )
     }
 
     return result
 }
 
-function getFailureMessage(error) {
-    return error?.message || String(error)
+function getFailureMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error)
 }
 
-function main(testToRun = "all") {
-    let stressTests = [
+function main(testToRun: string = "all"): void {
+    let stressTests: TestCase[] = [
         {
             name: "basic defs",
             path: "./test/stress-01-basic-defs.rue",
@@ -206,6 +229,7 @@ function main(testToRun = "all") {
             path: "./test/stress-17-mixed-vars-functions.rue",
             contains: [
                 "--space: 2rem;",
+                "padding: 2rem;",
                 "margin: 1rem;",
             ],
         },
@@ -218,10 +242,49 @@ function main(testToRun = "all") {
                 ".c .d .e{\n\tcolor: green;",
             ],
         },
+        {
+            name: "rue vars in function calls",
+            path: "./test/stress-19-vars-in-functions.rue",
+            contains: [
+                "--brand: hsl(175, 75%, 50%);",
+                "color: hsl(175, 60%, 40%);",
+            ],
+        },
+        {
+            name: "rue vars in javascript functions",
+            path: "./test/stress-20-rue-vars-in-js.rue",
+            contains: [
+                "--hue: 175;",
+                "--brand: hsl(175, 75%, 50%);",
+                "color: hsl(175, 60%, 40%);",
+            ],
+        },
+        {
+            name: "unified var declarations",
+            path: "./test/stress-21-unified-vars.rue",
+            contains: [
+                "--accent: royalblue;",
+                "--space: 1rem;",
+                "color: royalblue;",
+                "padding: 1rem;",
+            ],
+        },
+        {
+            name: "inline comments",
+            path: "./test/stress-22-inline-comments.rue",
+            contains: [
+                "--l0: hsl(175, 8%, 8%);",
+                "background: hsl(175, 8%, 8%);",
+                "content: \"https://example.com/a//b\";",
+            ],
+            assert(result) {
+                assert.ok(!result.css.includes("layer 0"), "inline comments should be removed")
+            },
+        },
     ]
 
-    let passed = 0
-    let failed = []
+    let passed: number = 0
+    let failed: TestFailure[] = []
 
     if (testToRun == "all") {
         for (let i = 0; i < stressTests.length; i++) {
