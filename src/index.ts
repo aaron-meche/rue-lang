@@ -1,11 +1,12 @@
-// 
-// Svelte Preprocessor
+//
+// Package Entry
 //
 // Rue Lang
 // by Aaron Meche
 //
 
 import { RueFile } from './compiler.js'
+import createRueVitePlugin, { type RueVitePlugin } from './vite-plugin.js'
 
 export { RueFile }
 
@@ -22,7 +23,9 @@ export interface RuePreprocessor {
     style(args: RuePreprocessorStyleArgs): RuePreprocessorResult | void
 }
 
-export default function runRue(): RuePreprocessor {
+export interface RuePluginToolkit extends RuePreprocessor, RueVitePlugin {}
+
+export function ruePreprocess(): RuePreprocessor {
     return {
         style({ content, attributes }) {
             if (attributes.lang !== 'rue') return
@@ -34,3 +37,14 @@ export default function runRue(): RuePreprocessor {
         }
     }
 }
+
+export const ruePlugin = createRueVitePlugin
+
+export function runRue(): RuePluginToolkit {
+    return {
+        ...createRueVitePlugin(),
+        ...ruePreprocess(),
+    }
+}
+
+export default runRue

@@ -176,11 +176,11 @@ Function bodies are run as JavaScript, so only use trusted Rue files.
 Rue includes a Svelte style preprocessor.
 
 ```js
-import runRue from "rue-lang";
+import { ruePreprocess } from "rue-lang";
 
 export default {
     preprocess: [
-        runRue()
+        ruePreprocess()
     ]
 };
 ```
@@ -202,7 +202,7 @@ export default {
 Rue also includes a Vite plugin for importing `.rue` files.
 
 ```js
-import ruePlugin from "rue-lang/vite-plugin";
+import ruePlugin from "rue-lang";
 
 export default {
     plugins: [
@@ -214,6 +214,8 @@ export default {
 ```js
 import "./styles.rue";
 ```
+
+If you prefer an explicit subpath import, `rue-lang/vite-plugin` still works.
 
 ## Error Handling
 

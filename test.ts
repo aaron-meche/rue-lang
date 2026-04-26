@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 import { RueFile } from "./src/compiler.js";
+import runRue, { ruePlugin, ruePreprocess } from "./src/index.js";
 
 interface TestResult {
     css: string
@@ -81,6 +82,23 @@ function runCase(test: TestCase): TestResult {
 
 function getFailureMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
+}
+
+function runIntegrationAssertions(): void {
+    let toolkit = runRue()
+    assert.equal(typeof toolkit.style, "function", "default export should include the Svelte preprocessor")
+    assert.equal(typeof toolkit.transform, "function", "default export should include the Vite plugin")
+
+    let preprocessor = ruePreprocess()
+    let preprocessed = preprocessor.style({
+        content: "def accent: royalblue;",
+        attributes: { lang: "rue" },
+    })
+    assert.equal(preprocessed?.code.includes("--accent: royalblue;"), true, "preprocessor should compile rue content")
+
+    let plugin = ruePlugin()
+    let transformed = plugin.transform("def accent: royalblue;", "/src/lib/main.rue?import")
+    assert.equal(transformed?.code.includes("--accent: royalblue;"), true, "vite plugin should compile rue imports")
 }
 
 function main(testToRun: string = "all"): void {
@@ -287,6 +305,17 @@ function main(testToRun: string = "all"): void {
     let failed: TestFailure[] = []
 
     if (testToRun == "all") {
+        try {
+            runIntegrationAssertions()
+        }
+        catch (error) {
+            failed.push({
+                name: "package integrations",
+                path: "./src/index.ts",
+                message: getFailureMessage(error),
+            })
+        }
+
         for (let i = 0; i < stressTests.length; i++) {
             try {
                 runCase(stressTests[i])
@@ -301,7 +330,10 @@ function main(testToRun: string = "all"): void {
             }
         }
 
-        let total = stressTests.length
+        let total = stressTests.length + 1
+        if (!failed.some((failure) => failure.name == "package integrations")) {
+            passed++
+        }
         console.log(passed, "out of", total, "tests passed", Math.round(passed * 100 / total), "%")
         console.log(failed.length, "tests failed")
 

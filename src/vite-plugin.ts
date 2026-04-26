@@ -6,12 +6,6 @@
 //
 
 import { RueFile } from "./compiler.js"
-import path from 'path'
-
-export interface RueViteResolveContext {
-    id: string
-    importer?: string
-}
 
 export interface RueViteHotUpdateContext {
     file: string
@@ -25,9 +19,17 @@ export interface RueViteHotUpdateContext {
 export interface RueVitePlugin {
     name: string
     enforce: "pre"
-    resolveId(id: string, importer?: string): string | void
     transform(code: string, id: string): { code: string, map: null } | null
     handleHotUpdate(context: RueViteHotUpdateContext): void
+}
+
+function stripQuery(id: string): string {
+    let queryIndex = id.indexOf("?")
+    return queryIndex == -1 ? id : id.slice(0, queryIndex)
+}
+
+function isRueId(id: string): boolean {
+    return stripQuery(id).endsWith(".rue")
 }
 
 export default function ruePlugin(): RueVitePlugin {
@@ -35,23 +37,18 @@ export default function ruePlugin(): RueVitePlugin {
         name: 'rue-vite-plugin',
         enforce: 'pre',
 
-        resolveId(id, importer) {
-            if (id.endsWith('.rue')) {
-                if (!importer) return path.resolve(id)
-                return path.resolve(path.dirname(importer), id)
-            }
-        },
-
         transform(code, id) {
-            if (!id.endsWith('.rue')) return null
+            if (!isRueId(id)) return null
 
-            const compiler = new RueFile(id)
+            const compiler = new RueFile()
+            compiler.feed(code)
             const css = compiler.getCSS()
+            const cleanId = stripQuery(id)
 
             return { 
                 code: `
                 if (typeof document !== 'undefined') {
-                    const __id = ${JSON.stringify(id)};
+                    const __id = ${JSON.stringify(cleanId)};
                     let el = document.querySelector(\`style[data-rue="\${__id}"]\`)
                     if (!el) {
                     el = document.createElement('style')
@@ -65,7 +62,7 @@ export default function ruePlugin(): RueVitePlugin {
         },
 
         handleHotUpdate({ file, server }) {
-            if (file.endsWith('.rue')) {
+            if (isRueId(file)) {
                 server.ws.send({ type: 'full-reload' })
             }
         }
