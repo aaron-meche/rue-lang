@@ -5,12 +5,10 @@
 // by Aaron Meche
 //
 
-import fs from 'fs';
-import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileText, writeFileText } from './helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __sysDir = path.dirname(__filename);
 
 export type RueCSSMap = Record<string, string[]>
 export type RueVarMap = Record<string, string>
@@ -37,25 +35,6 @@ export interface RueFunctionDefinition {
 
 export type RueFunctionMap = Record<string, RueFunctionDefinition>
 
-// Read File Text Content
-function readFileText(filePath: string): string { 
-    try {
-        const content = fs.readFileSync(filePath, 'utf8');
-        return content;
-    } catch (error) {
-        let message = error instanceof Error ? error.message : String(error)
-        console.error("read file: " + message)
-        return ""
-    }
-}
-
-// Write File Text Content
-function writeFileText(filePath: string, fileContent: string): void {
-    const dir = path.dirname(filePath)
-    if (dir && dir != ".") fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(filePath, fileContent)
-}
-
 export class RueFile {
     #txt: string | null = null
     #layers: string[] = []
@@ -72,38 +51,39 @@ export class RueFile {
     #errors: string[] = []
 
     // Read from filepath, parse and compile
-    constructor(filepath?: string, doNotCompile: boolean = false) {
-        if (!filepath) return
-        this.feed(readFileText(filepath), doNotCompile)
+    constructor(filepath?: string, autoCompile: boolean = true) {
+        if (filepath)
+            this.feed(readFileText(filepath), autoCompile)
+        return
     }
 
-    // Force feed strinb instead of filepath
-    feed(string: string, doNotCompile?: boolean): void {
+    // Force feed string instead of filepath
+    feed(string: string, autoCompile?: boolean): void {
         this.#txt = typeof string == "string" ? string : ""
 
-        if (doNotCompile) return
-        this.run()
+        if (autoCompile)
+            this.run()
+        return
     }
 
     // Parse and Compile stored text
     run(): void {
-        this.#resetOutput()
-        this.#parse()
-        this.#compile()
-    }
-
-    #resetOutput(): void {
+        // Reset Output
         this.#layers = []
         this.#map = { ":root": [] }
         this.#var = {}
         this.#func = {}
         this.#css = []
-
         this.#inFunc = false
         this.#funcSignature = null
         this.#funcBody = []
         this.#funcDepth = 0
         this.#errors = []
+        // Begin Program:
+        // 01: Parse
+        this.#parse()
+        // 02: Compile
+        this.#compile()
     }
 
     #addError(label: string, error: unknown): void {
@@ -158,9 +138,10 @@ export class RueFile {
         if (firstWord == "<!--") return
 
         // Function Capture Mode
-        if (this.#inFunc)   this.#processFunctionCaptureLine(line, lastChar)
+        if (this.#inFunc)   
+            this.#processFunctionCaptureLine(line, lastChar)
         // Style Capture Mode
-        else                this.#processStyleCaptureLine(line, lastChar, firstChar, firstWord)
+        else this.#processStyleCaptureLine(line, lastChar, firstChar, firstWord)
     }
 
     #stripLineComment(line: string): string {
