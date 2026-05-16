@@ -9,6 +9,7 @@ import { RueFile } from './compiler.js'
 import createRueVitePlugin, { type RueVitePlugin } from './vite-plugin.js'
 
 export { RueFile }
+export * from './interface.js'
 
 export interface RuePreprocessorResult {
     code: string

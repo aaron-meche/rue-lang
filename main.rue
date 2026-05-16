@@ -1,0 +1,18 @@
+//
+// Rue Programming Language
+//
+
+component Header(text, config = {}) {
+    return new UIElement({
+        ...config,
+        font_size: 4rem
+        font_weight: 500
+        content: text
+    })
+}
+
+Interface {
+    "body": [
+        Header("big text")
+    ]
+}
