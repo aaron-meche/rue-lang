@@ -10,22 +10,24 @@ import { readFileText, writeFileText } from './helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
+//
+// Type Exports
 export type RueCSSMap = Record<string, string[]>
 export type RueVarMap = Record<string, string>
 export type RueCallable = (...params: string[]) => unknown
-
+export type RueFunctionMap = Record<string, RueFunctionDefinition>
+//
+// Interface Exports
 export interface RueFunctionCall {
     name: string
     params: string[]
     call: string
 }
-
 export interface RueFunctionSignature {
     name: string
     params: string[]
     call?: string
 }
-
 export interface RueFunctionDefinition {
     name: string
     params: string[]
@@ -33,15 +35,15 @@ export interface RueFunctionDefinition {
     function: RueCallable
 }
 
-export type RueFunctionMap = Record<string, RueFunctionDefinition>
-
+//
+// Main RueFile Class
 export class RueFile {
-    #txt: string | null = null
-    #layers: string[] = []
-    #map: RueCSSMap = {}
-    #var: RueVarMap = {}
-    #func: RueFunctionMap = {}
-    #css: string[] = []
+    #rawText: string = ""               // Raw text content of imported file (.rue syntax)
+    #cssOnion: string[] = []            // Reference used to track real-time css attribute tree
+    #cssMap: RueCSSMap = {":root": []}  // JS Map that stores CSS data, pre-compilation
+    #varMap: RueVarMap = {}             // JS Map that stores Rue variables defined in .rue
+    #funcMap: RueFunctionMap = {}       // JS Map that stores JS functions defined in .rue
+    #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.\
 
     #inFunc: boolean = false
     #funcSignature: RueFunctionSignature | null = null
@@ -59,7 +61,7 @@ export class RueFile {
 
     // Force feed string instead of filepath
     feed(string: string, autoCompile?: boolean): void {
-        this.#txt = typeof string == "string" ? string : ""
+        this.#rawText = typeof string == "string" ? string : ""
 
         if (autoCompile)
             this.run()
@@ -69,11 +71,11 @@ export class RueFile {
     // Parse and Compile stored text
     run(): void {
         // Reset Output
-        this.#layers = []
-        this.#map = { ":root": [] }
-        this.#var = {}
-        this.#func = {}
-        this.#css = []
+        this.#cssOnion = []
+        this.#cssMap = { ":root": [] }
+        this.#varMap = {}
+        this.#funcMap = {}
+        this.#compiledCSS = []
         this.#inFunc = false
         this.#funcSignature = null
         this.#funcBody = []
@@ -94,7 +96,7 @@ export class RueFile {
 
     // Iterate and process all lines
     #parse(): void {
-        let lineSplitText = this.#txt?.split("\n")
+        let lineSplitText = this.#rawText?.split("\n")
         if (!lineSplitText) return
         for (let i = 0; i < lineSplitText.length; i++) {
             try {
@@ -111,18 +113,18 @@ export class RueFile {
             this.#funcBody = []
             this.#funcDepth = 0
         }
-        if (this.#layers.length) {
+        if (this.#cssOnion.length) {
             this.#addError("parse", "unclosed style block")
-            this.#layers = []
+            this.#cssOnion = []
         }
     }
 
     // Build CSS file from map
     #compile(): void {
-        for (let i = 0; i < Object.keys(this.#map).length; i++) {
-            this.#css.push(Object.keys(this.#map)[i] + "{")
-            this.#css.push("\t" + (Object.values(this.#map)[i] || []).join("\n\t"))
-            this.#css.push("}")
+        for (let i = 0; i < Object.keys(this.#cssMap).length; i++) {
+            this.#compiledCSS.push(Object.keys(this.#cssMap)[i] + "{")
+            this.#compiledCSS.push("\t" + (Object.values(this.#cssMap)[i] || []).join("\n\t"))
+            this.#compiledCSS.push("}")
         }
     }
 
@@ -181,7 +183,7 @@ export class RueFile {
                     this.#funcBody = this.#handleJavascriptContext(this.#funcBody)
                     if (!this.#funcSignature?.name) throw new Error("invalid function signature")
                     let params = this.#funcSignature.params || []
-                    this.#func[this.#funcSignature.name] = {
+                    this.#funcMap[this.#funcSignature.name] = {
                         name: this.#funcSignature.name,
                         params: params,
                         body: this.#funcBody,
@@ -217,12 +219,12 @@ export class RueFile {
         } 
         // New Layer        e.g. : elem {
         else if (line.includes("{")) {
-            this.#layers.push(line.replace("{", "").trim())
-            this.#map[this.#mapID()] = []
+            this.#cssOnion.push(line.replace("{", "").trim())
+            this.#cssMap[this.#mapID()] = []
         } 
         // Close Layer      e.g. : }
         else if (line == "}") {
-            if (this.#layers.length) this.#layers.pop()
+            if (this.#cssOnion.length) this.#cssOnion.pop()
             else this.#addError("layer", "unexpected closing brace")
         } 
         // Variable Def     e.g. : def name: val  ||  _name_: val
@@ -232,8 +234,8 @@ export class RueFile {
         // Key: Value       e.g. : background: red
         else if (line.includes(":")) {
             let curMapID = this.#mapID() || ":root"
-            if (!this.#map[curMapID]) this.#map[curMapID] = []
-            this.#map[curMapID].push(this.#resolveString(this.#ensureSemicolon(line)))
+            if (!this.#cssMap[curMapID]) this.#cssMap[curMapID] = []
+            this.#cssMap[curMapID].push(this.#resolveString(this.#ensureSemicolon(line)))
         }
     }
 
@@ -244,13 +246,13 @@ export class RueFile {
 
         if (!selector) return this.#addError("layer", "invalid inline style selector")
 
-        this.#layers.push(selector)
+        this.#cssOnion.push(selector)
         let curMapID = this.#mapID()
-        if (!this.#map[curMapID]) this.#map[curMapID] = []
+        if (!this.#cssMap[curMapID]) this.#cssMap[curMapID] = []
 
         if (body) this.#processInlineStyleBody(body)
 
-        this.#layers.pop()
+        this.#cssOnion.pop()
     }
 
     // e.g. : elem { background: red; color: blue }
@@ -277,11 +279,11 @@ export class RueFile {
                     return
                 }
 
-                this.#layers.push(selector)
+                this.#cssOnion.push(selector)
                 let curMapID = this.#mapID()
-                if (!this.#map[curMapID]) this.#map[curMapID] = []
+                if (!this.#cssMap[curMapID]) this.#cssMap[curMapID] = []
                 this.#processInlineStyleBody(body.slice(i + 1, closeIndex).trim())
-                this.#layers.pop()
+                this.#cssOnion.pop()
 
                 buffer = ""
                 i = closeIndex
@@ -297,11 +299,11 @@ export class RueFile {
     #processInlineDeclarations(string: string): void {
         let declarations = string.split(";")
         let curMapID = this.#mapID()
-        if (!this.#map[curMapID]) this.#map[curMapID] = []
+        if (!this.#cssMap[curMapID]) this.#cssMap[curMapID] = []
         for (let i = 0; i < declarations.length; i++) {
             let declaration = declarations[i].trim()
             if (!declaration) continue
-            this.#map[curMapID].push(this.#resolveString(declaration + ";"))
+            this.#cssMap[curMapID].push(this.#resolveString(declaration + ";"))
         }
     }
 
@@ -317,7 +319,7 @@ export class RueFile {
         return -1
     }
 
-    #mapID(): string { return this.#layers.join(" ")?.replaceAll(" :", ":") }
+    #mapID(): string { return this.#cssOnion.join(" ")?.replaceAll(" :", ":") }
 
     #defineRueVar(line: string): void {
         if (line.split(" ")[0] == "def") line = line.replace("def ", "")
@@ -326,10 +328,10 @@ export class RueFile {
         if (!line.includes(":") || !varName) return this.#addError("var", "invalid variable definition")
 
         let resolvedValue = this.#resolveString(varValue)
-        this.#var[varName] = resolvedValue
+        this.#varMap[varName] = resolvedValue
 
         let rootLine = "--" + varName + ": " + resolvedValue
-        this.#map[":root"].push(this.#ensureSemicolon(rootLine))
+        this.#cssMap[":root"].push(this.#ensureSemicolon(rootLine))
     }
 
     #ensureSemicolon(line: string): string {
@@ -408,7 +410,7 @@ export class RueFile {
             let funcName = extractedCalls[i].name
             let parameters = extractedCalls[i].params
             // Fetch function from func map
-            let func = this.#func?.[funcName]
+            let func = this.#funcMap?.[funcName]
             let funcCallStr = extractedCalls[i].call || funcName + "(" + parameters + ")"
             if (func) {
                 try {
@@ -429,7 +431,7 @@ export class RueFile {
             let calls = this.#extractFunctionCalls(lineArr[i])
             if (!calls) continue
             for (let i = 0; i < calls.length; i++) {
-                let foundFunc = this.#func?.[calls[i].name]
+                let foundFunc = this.#funcMap?.[calls[i].name]
                 if (!foundFunc) continue
             }
         }
@@ -442,16 +444,16 @@ export class RueFile {
             if (line[i] == "_") break
             curVarName += line[i]
         }
-        if (!curVarName || this.#var[curVarName] == undefined) return line
-        line = line.replace("_" + curVarName + "_", this.#var[curVarName])
+        if (!curVarName || this.#varMap[curVarName] == undefined) return line
+        line = line.replace("_" + curVarName + "_", this.#varMap[curVarName])
         if (line.includes("_")) 
             return this.#handleRueVarCalls(line)
         else 
             return line
     }
 
-    print(): void { console.log(this.#css.join("\n")) }
-    getCSS(): string { return this.#css.join("\n") }
+    print(): void { console.log(this.#compiledCSS.join("\n")) }
+    getCSS(): string { return this.#compiledCSS.join("\n") }
     getErrors(): string[] { return this.#errors }
-    output(path: string): void { writeFileText(path, this.#css.join("\n")) }
+    output(path: string): void { writeFileText(path, this.#compiledCSS.join("\n")) }
 }
