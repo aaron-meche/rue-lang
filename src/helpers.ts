@@ -14,10 +14,6 @@ export interface RueFunctionSignature {
     call: string
 }
 
-export interface RueObjectPropertyOptions {
-    skipQuotedKeys?: boolean
-}
-
 export interface RueRunnableFunction {
     function: (...params: unknown[]) => unknown
 }
@@ -44,17 +40,24 @@ export function writeFileText(filePath: string, fileContent: string): void {
 }
 
 export function stripLineComment(line: string): string {
+    let commentIndex = line.indexOf("//")
+
+    if (commentIndex == -1) return line
+
+    let beforeComment = line.slice(0, commentIndex)
+    if (!/[\\'"`]/.test(beforeComment)) return beforeComment
+
     let quote: string | null = null
     let escaped = false
 
-    for (let i = 0; i < line.length; i++) {
+    for (let i = 0; i < line.length - 1; i++) {
         let char = line[i]
         let nextChar = line[i + 1]
 
         if (escaped) { escaped = false; continue }
         if (char == "\\") { escaped = true; continue }
-        if (quote && char == quote) { quote = null; continue; }
-        if (char == "\"" || char == "'" || char == "`") { quote = char; continue }
+        if (quote && char == quote) { quote = null; continue }
+        if (!quote && (char == "\"" || char == "'" || char == "`")) { quote = char; continue }
         if (!quote && char == "/" && nextChar == "/") return line.slice(0, i)
     }
 
@@ -102,65 +105,6 @@ export function countRueScopeDepth(line: string): number {
     }
 
     return depth
-}
-
-export function normalizeRueObjectBody(lines: string[]): string[] {
-    return lines.map(line => {
-        let trimmed = line.trim()
-
-        if (!trimmed || trimmed.endsWith(",") || trimmed.endsWith("{") || trimmed.endsWith("[")) return line
-
-        return line + ","
-    })
-}
-
-export function resolveRueObjectProperty(
-    line: string,
-    localNames: Iterable<string> = [],
-    runtimeNames: Iterable<string> = [],
-    options: RueObjectPropertyOptions = {}
-): string | null {
-    if (!line.includes(":")) return null
-
-    let colonIndex = line.indexOf(":")
-    let key = line.slice(0, colonIndex).trim()
-    let value = line.slice(colonIndex + 1).trim()
-
-    if (!key || !value) return null
-    if (options.skipQuotedKeys && (key.startsWith("\"") || key.startsWith("'"))) return null
-
-    return key + ": " + resolveRueObjectValue(value, localNames, runtimeNames)
-}
-
-export function resolveRueArrayItem(
-    line: string,
-    localNames: Iterable<string> = [],
-    runtimeNames: Iterable<string> = []
-): string {
-    let trimmed = line.trim()
-
-    if (!trimmed || trimmed == "}" || trimmed == "]") return line
-    if (trimmed.endsWith("{") || trimmed.endsWith("[") || trimmed.endsWith(")")) return line
-
-    return line.replace(trimmed, resolveRueObjectValue(trimmed, localNames, runtimeNames))
-}
-
-export function resolveRueObjectValue(
-    value: string,
-    localNames: Iterable<string> = [],
-    runtimeNames: Iterable<string> = []
-): string {
-    let cleanValue = value.endsWith(",") ? value.slice(0, -1).trim() : value.trim()
-    let knownNames = new Set([...localNames, ...runtimeNames])
-
-    if (!cleanValue) return cleanValue
-    if (cleanValue[0] == "\"" || cleanValue[0] == "'" || cleanValue[0] == "`") return cleanValue
-    if (!Number.isNaN(Number(cleanValue))) return cleanValue
-    if (["true", "false", "null", "undefined"].includes(cleanValue)) return cleanValue
-    if (knownNames.has(cleanValue)) return cleanValue
-    if (cleanValue.includes("(") || cleanValue.includes("[") || cleanValue.includes("{")) return cleanValue
-
-    return JSON.stringify(cleanValue)
 }
 
 export function buildRunnableContext(

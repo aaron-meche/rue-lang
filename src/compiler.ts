@@ -10,8 +10,7 @@ import {
     stripLineComment, ensureSemicolon,
     extractFunctionCalls, compileCSSMap,
     mapID,
-    countRueScopeDepth, normalizeRueObjectBody,
-    resolveRueObjectProperty, resolveRueArrayItem,
+    countRueScopeDepth,
     buildRunnableContext, resolveFunctionCalls,
     type RueFunctionSignature
 } from './helpers.js';
@@ -41,15 +40,6 @@ export class RueFile {
     #interface: RueInterface = {}       // JS object that stores the Rue Interface block
     #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.
 
-    #inFunc: boolean = false            // Boolean to toggle function capture mode
-    #funcSignature: RueFunctionSignature | null = null
-    #funcBody: string[] = []            // Array to capture function body lines
-    #funcDepth: number = 0              // Integer counter to handle nested functions
-
-    #inInterface: boolean = false       // Boolean to toggle Interface capture mode
-    #interfaceBody: string[] = []       // Array to capture Interface object lines
-    #interfaceDepth: number = 0         // Integer counter to handle nested Interface values
-
     #errors: string[] = []              // Array for caught errors
 
     constructor(filepath?: string, autoCompile: boolean = true) {
@@ -69,23 +59,8 @@ export class RueFile {
     }
 
     run(): void {
-        // Reset Output
-        this.#cssOnion = []
-        this.#cssMap = { ":root": [] }
-        this.#funcMap = {}
-        this.#interface = {}
-        this.#compiledCSS = []
-        this.#inFunc = false
-        this.#funcSignature = null
-        this.#funcBody = []
-        this.#funcDepth = 0
-        this.#inInterface = false
-        this.#interfaceBody = []
-        this.#interfaceDepth = 0
-        this.#errors = []
-        // 01: Parse
+        this.#reset()
         this.#parse()
-        // 02: Compile
         this.#compile()
     }
 
@@ -93,6 +68,15 @@ export class RueFile {
         let message = error instanceof Error ? error.message : String(error)
         this.#errors.push(label + ": " + message)
         console.error(label + ": " + message)
+    }
+
+    #reset(): void {
+        this.#cssOnion = []
+        this.#cssMap = { ":root": [] }
+        this.#funcMap = {}
+        this.#interface = {}
+        this.#compiledCSS = []
+        this.#errors = []
     }
 
     #parse(): void {
@@ -105,15 +89,37 @@ export class RueFile {
 
         for (let i = 0; i < lineSplitText.length; i++) {
             try {
-                this.#processLine(stripLineComment(lineSplitText[i]).trim())
+                let line = stripLineComment(lineSplitText[i]).trim()
+                if (!line) continue
+
+                let firstWord = line.split(" ")[0]
+
+                switch (firstWord) {
+                    // Comments
+                    case "//":
+                    case "<!--":
+                        continue
+                    // Functions
+                    case "func":
+                    case "function":
+                    case "component":
+                        i += this.#captureFunction(lineSplitText, i, firstWord)
+                        break
+                    // Interface
+                    case "Interface":
+                        i += this.#captureInterface(lineSplitText, i)
+                        break
+                    // CSS Styles
+                    default:
+                        this.#processStyleCaptureLine(line, firstWord)
+                        break
+                }
             }
             catch (error) {
                 this.#throwError("line " + (i + 1), error)
             }
         }
 
-        if (this.#inFunc)           { this.#throwError("Parse", "unclosed function block"); return }
-        if (this.#inInterface)      { this.#throwError("Parse", "unclosed Interface block"); return }
         if (this.#cssOnion.length)  { this.#throwError("Parse", "unclosed style block"); return }
     }
 
@@ -121,163 +127,140 @@ export class RueFile {
         this.#compiledCSS = compileCSSMap(this.#cssMap)
     }
 
-    #processLine(line: string): void {
-        if (!line) return
+    #captureFunction(lines: string[], startIndex: number, firstWord: string): number {
+        let startLine = stripLineComment(lines[startIndex]).trim()
+        let signature = extractFunctionCalls(startLine)?.[0]
+        let body: string[] = []
+        let depth = 0
 
-        let firstWord = line.split(" ")[0]
+        if (!signature?.name)    { this.#throwError(firstWord, "invalid function signature"); return 0 }
+        if (!startLine.includes("{")) { this.#throwError(signature.name, "missing opening brace"); return 0 }
 
-        if (this.#inFunc) {
-            this.#processFunctionCaptureLine(line)
-            return
-        }
+        let paramNames = signature.params.map(param => param.split("=")[0].trim())
 
-        if (this.#inInterface) {
-            this.#processInterfaceCaptureLine(line)
-            return
-        }
+        for (let i = startIndex + 1; i < lines.length; i++) {
+            let rawLine = stripLineComment(lines[i]).trim()
+            if (!rawLine) continue
 
-        switch (firstWord) {
-            // Comments
-            case "//":
-            case "<!--":
-                return
-            // Functions
-            case "func":
-            case "function":
-            case "component":
-                this.#beginFunctionCapture(line, firstWord)
-                break
-            // Interface
-            case "Interface":
-                this.#beginInterfaceCapture(line)
-                break
-            // CSS Styles
-            default:
-                this.#processStyleCaptureLine(line, firstWord)
-                break
-        }
-    }
+            if (rawLine == "}") {
+                if (depth == 0) {
+                    try {
+                        let params = signature.params || []
+                        let runtimeNames = Object.keys(RueUIRuntime)
+                        let runtimeValues = Object.values(RueUIRuntime)
+                        let callable = new Function(...runtimeNames, ...params, body.join("\n"))
 
-    #beginFunctionCapture(line: string, firstWord: string): void {
-        let signature = extractFunctionCalls(line)?.[0]
+                        this.#funcMap[signature.name] = {
+                            name: signature.name,
+                            params: params,
+                            body: body,
+                            function: ((...args: unknown[]) => callable(...runtimeValues, ...args)) as RueCallable,
+                        }
+                    }
+                    catch (error) {
+                        this.#throwError("add func", error)
+                    }
 
-        if (!signature?.name)    { this.#throwError(firstWord, "invalid function signature"); return }
-        if (!line.includes("{")) { this.#throwError(signature.name, "missing opening brace"); return }
-
-        this.#inFunc = true
-        this.#funcSignature = signature
-        this.#funcBody = []
-        this.#funcDepth = 0
-    }
-
-    #processFunctionCaptureLine(line: string): void {
-        let bodyLine = this.#resolveFunctionBodyLine(line)
-
-        if (bodyLine == "}") {
-            if (this.#funcDepth == 0) {
-                this.#endFunctionCapture()
-                return
+                    return i - startIndex
+                }
+                depth--
+                body.push(this.#compileRueObjectLine(rawLine, paramNames))
+                continue
             }
-            this.#funcDepth--
-            this.#funcBody.push(bodyLine)
-            return
-        }
 
-        if (bodyLine.includes("}") && this.#funcDepth > 0) {
-            this.#funcDepth--
-            this.#funcBody.push(bodyLine)
-            return
-        }
+            let bodyLine = this.#compileRueObjectLine(rawLine, paramNames)
 
-        this.#funcBody.push(bodyLine)
+            if (rawLine.includes("}") && depth > 0) {
+                depth--
+                body.push(bodyLine)
+                continue
+            }
 
-        if (bodyLine.endsWith("{")) {
-            this.#funcDepth++
-        }
-    }
+            body.push(bodyLine)
 
-    #resolveFunctionBodyLine(line: string): string {
-        let params = (this.#funcSignature?.params || []).map(param => param.split("=")[0].trim())
-        let property = resolveRueObjectProperty(line, params, Object.keys(RueUIRuntime), { skipQuotedKeys: true })
-
-        if (!property) return line
-        return property + ","
-    }
-
-    #endFunctionCapture(): void {
-        try {
-            if (!this.#funcSignature?.name) throw new Error("invalid function signature")
-
-            let params = this.#funcSignature.params || []
-            let capturedBody = this.#funcBody
-            let runtimeNames = Object.keys(RueUIRuntime)
-            let runtimeValues = Object.values(RueUIRuntime)
-            let callable = new Function(...runtimeNames, ...params, capturedBody.join("\n"))
-
-            this.#funcMap[this.#funcSignature.name] = {
-                name: this.#funcSignature.name,
-                params: params,
-                body: capturedBody,
-                function: ((...args: unknown[]) => callable(...runtimeValues, ...args)) as RueCallable,
+            if (rawLine.endsWith("{")) {
+                depth++
             }
         }
-        catch (error) {
-            this.#throwError("add func", error)
+
+        this.#throwError("Parse", "unclosed function block")
+        return lines.length - startIndex - 1
+    }
+
+    #captureInterface(lines: string[], startIndex: number): number {
+        let line = stripLineComment(lines[startIndex]).trim()
+
+        if (!line.includes("{")) { this.#throwError("Interface", "missing opening brace"); return 0 }
+
+        let body: string[] = []
+        let depth = 0
+        let knownNames = [...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime)]
+
+        for (let i = startIndex + 1; i < lines.length; i++) {
+            let bodyLine = stripLineComment(lines[i]).trim()
+            if (!bodyLine) continue
+
+            if (bodyLine == "}" && depth == 0) {
+                try {
+                    let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
+                    let contextNames = Object.keys(context)
+                    let values = Object.values(context)
+                    let interfaceBody = body.join("\n")
+                    let buildInterface = new Function(...contextNames, "return ({\n" + interfaceBody + "\n})")
+
+                    this.#interface = buildInterface(...values) as RueInterface
+                }
+                catch (error) {
+                    this.#throwError("Interface", error)
+                }
+
+                return i - startIndex
+            }
+
+            body.push(this.#compileRueObjectLine(bodyLine, knownNames))
+            depth += countRueScopeDepth(bodyLine)
         }
 
-        this.#inFunc = false
-        this.#funcSignature = null
-        this.#funcBody = []
-        this.#funcDepth = 0
+        this.#throwError("Parse", "unclosed Interface block")
+        return lines.length - startIndex - 1
     }
 
-    #beginInterfaceCapture(line: string): void {
-        if (!line.includes("{")) { this.#throwError("Interface", "missing opening brace"); return }
+    #compileRueObjectLine(line: string, localNames: string[]): string {
+        let raw = line.trim()
+        if (!raw) return line
 
-        this.#inInterface = true
-        this.#interfaceBody = []
-        this.#interfaceDepth = 0
-    }
+        if (raw.endsWith(",")) raw = raw.slice(0, -1).trim()
 
-    #processInterfaceCaptureLine(line: string): void {
-        if (line == "}" && this.#interfaceDepth == 0) {
-            this.#endInterfaceCapture()
-            return
+        if (raw == "}" || raw == "]") return raw + ","
+        if (raw.startsWith("return ") || raw.endsWith("{") || raw.endsWith("[")) return line
+        if (raw.includes("}")) return line
+
+        let knownNames = new Set([...localNames, ...Object.keys(RueUIRuntime)])
+        let compileValue = (value: string): string => {
+            let isJavascriptValue =
+                value[0] == "\"" ||
+                value[0] == "'" ||
+                value[0] == "`" ||
+                !Number.isNaN(Number(value)) ||
+                ["true", "false", "null", "undefined"].includes(value) ||
+                knownNames.has(value) ||
+                value.includes("(") ||
+                value.includes("[") ||
+                value.includes("{")
+
+            return isJavascriptValue ? value : JSON.stringify(value)
         }
 
-        this.#interfaceBody.push(this.#resolveInterfaceBodyLine(line))
-        this.#interfaceDepth += countRueScopeDepth(line)
-    }
+        if (raw.startsWith("...")) return raw + ","
+        if (!raw.includes(":")) return compileValue(raw) + ","
 
-    #resolveInterfaceBodyLine(line: string): string {
-        let names = [...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime)]
-        let property = resolveRueObjectProperty(line, names)
+        let colonIndex = raw.indexOf(":")
+        let key = raw.slice(0, colonIndex).trim()
+        let value = raw.slice(colonIndex + 1).trim()
 
-        if (property) return property
-        return resolveRueArrayItem(line, names)
-    }
+        if (!key || !value) return line
 
-    #endInterfaceCapture(): void {
-        try {
-            let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
-            let names = Object.keys(context)
-            let values = Object.values(context)
-            let body = this.#normalizeInterfaceBody().join("\n")
-            let buildInterface = new Function(...names, "return ({\n" + body + "\n})")
-
-            this.#interface = buildInterface(...values) as RueInterface
-        }
-        catch (error) {
-            this.#throwError("Interface", error)
-        }
-
-        this.#inInterface = false
-        this.#interfaceBody = []
-        this.#interfaceDepth = 0
-    }
-
-    #normalizeInterfaceBody(): string[] {
-        return normalizeRueObjectBody(this.#interfaceBody)
+        return key + ": " + compileValue(value) + ","
     }
 
     #processStyleCaptureLine(line: string, firstWord: string): void {
