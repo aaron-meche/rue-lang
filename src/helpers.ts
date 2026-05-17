@@ -69,19 +69,6 @@ export function ensureSemicolon(line: string): string {
     return line + ";"
 }
 
-export function compileCSSMap(cssMap: Record<string, string[]>): string[] {
-    let compiledCSS: string[] = []
-    let selectors = Object.keys(cssMap)
-
-    for (let i = 0; i < selectors.length; i++) {
-        compiledCSS.push(selectors[i] + "{")
-        compiledCSS.push("\t" + (cssMap[selectors[i]] || []).join("\n\t"))
-        compiledCSS.push("}")
-    }
-
-    return compiledCSS
-}
-
 export function mapID(selectors: string[]): string {
     return selectors.join(" ").replaceAll(" :", ":")
 }

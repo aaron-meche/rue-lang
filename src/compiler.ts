@@ -8,8 +8,7 @@
 import {
     readFileText, writeFileText,
     stripLineComment, ensureSemicolon,
-    extractFunctionCalls, compileCSSMap,
-    mapID,
+    extractFunctionCalls, mapID,
     countRueScopeDepth,
     buildRunnableContext, resolveFunctionCalls,
     type RueFunctionSignature
@@ -35,12 +34,13 @@ export interface RueFunctionDefinition {
 // Main RueFile Class
 export class RueFile {
     #rawText: string = ""               // Raw text content of imported file (.rue syntax)
-    #cssOnion: string[] = []            // Reference used to track real-time css attribute tree
-    #cssMap: RueCSSMap = {":root": []}  // JS Map that stores CSS data, pre-compilation
-    #funcMap: RueFunctionMap = {}       // JS Map that stores JS functions defined in .rue
-    #interface: RueInterface = []       // JS array that stores the Rue Interface block
+    #cssOnion: string[] = []            // Array used to track real-time css attribute tree
+    #cssMap: RueCSSMap = {}             // JS Map that stores parsed CSS data, pre-compilation
+    #funcMap: RueFunctionMap = {}       // JS Map that stores parsed JS signatures and functions
+    #interface: RueInterface = []       // Array that stores the Rue Interface stack
     #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.
-
+    #compiledHTML: string[] = []        // Array of compiled HTML lines ready to be joined
+    #currLineIndex: number = 0          // Number used for real-time active line tracking for errors
     #errors: string[] = []              // Array for caught errors
 
     constructor(filepath?: string, autoCompile: boolean = true) {
@@ -59,21 +59,22 @@ export class RueFile {
         return
     }
 
+    #throwError(label: string, error: unknown): void {
+        let message = error instanceof Error ? error.message : String(error)
+        let errorMessage = `[${label}] line ${this.#currLineIndex + 1}: ${message}`
+        this.#errors.push(errorMessage)
+        console.error(errorMessage)
+    }
+
     run(): void {
         this.#reset()
         this.#parse()
         this.#compile()
     }
-
-    #throwError(label: string, error: unknown): void {
-        let message = error instanceof Error ? error.message : String(error)
-        this.#errors.push(label + ": " + message)
-        console.error(label + ": " + message)
-    }
-
+    
     #reset(): void {
         this.#cssOnion = []
-        this.#cssMap = { ":root": [] }
+        this.#cssMap = {}
         this.#funcMap = {}
         this.#interface = []
         this.#compiledCSS = []
@@ -88,9 +89,9 @@ export class RueFile {
             return
         }
 
-        for (let i = 0; i < lineSplitText.length; i++) {
+        for (this.#currLineIndex = 0; this.#currLineIndex < lineSplitText.length; this.#currLineIndex++) {
             try {
-                let line = stripLineComment(lineSplitText[i]).trim()
+                let line = stripLineComment(lineSplitText[this.#currLineIndex]).trim()
                 if (!line) continue
 
                 let firstWord = line.split(" ")[0]
@@ -104,11 +105,11 @@ export class RueFile {
                     case "func":
                     case "function":
                     case "component":
-                        i += this.#captureFunction(lineSplitText, i, firstWord)
+                        this.#currLineIndex += this.#captureFunction(lineSplitText, this.#currLineIndex, firstWord)
                         break
                     // Interface
                     case "Interface":
-                        i += this.#captureInterface(lineSplitText, i)
+                        this.#currLineIndex += this.#captureInterface(lineSplitText, this.#currLineIndex)
                         break
                     // CSS Styles
                     default:
@@ -117,7 +118,7 @@ export class RueFile {
                 }
             }
             catch (error) {
-                this.#throwError("line " + (i + 1), error)
+                this.#throwError("line " + (this.#currLineIndex + 1), error)
             }
         }
 
@@ -125,7 +126,62 @@ export class RueFile {
     }
 
     #compile(): void {
-        this.#compiledCSS = compileCSSMap(this.#cssMap)
+        this.#compiledCSS = []
+        this.#compiledHTML = []
+
+        // Compile CSS
+        let cssSelectors = Object.keys(this.#cssMap)
+        for (let i = 0; i < cssSelectors.length; i++) {
+            this.#compiledCSS.push(cssSelectors[i] + "{")
+            this.#compiledCSS.push("\t" + (this.#cssMap[cssSelectors[i]] || []).join("\n\t"))
+            this.#compiledCSS.push("}")
+        }
+
+        // Compile HTML
+        let htmlBodyContent: string[] = []
+        this.#interface.forEach(elem => {
+            if (elem instanceof UIElement)
+                htmlBodyContent.push(elem.getHTML())
+            else htmlBodyContent.push(String(elem))
+        })
+
+        // Check for Errors, (if) Insert into HTML
+        if (this.#errors.length > 0) {
+            let errorMessageArray: UIElement[] = []
+            this.#errors.forEach(err => { 
+                errorMessageArray.push(new UIElement({ 
+                    padding: "1.2rem",
+                    background: "rgb(60, 30, 30)",
+                    content: err 
+                }))
+            })
+            htmlBodyContent.push(new UIElement({
+                width: "fit-content",
+                display: "grid",
+                gap: "0.8rem",
+                padding: "2.4rem",
+                background: "rgb(20, 0, 0)",
+                color: "rgb(255, 230, 230)",
+                content: errorMessageArray
+            }).getHTML())
+        }
+
+        this.#compiledHTML = [
+            `<!DOCTYPE html>`,
+            `<html lang="en">`,
+            `<head>`,
+            `\t<meta charset="UTF-8">`,
+            `\t<meta name="viewport" content="width=device-width, initial-scale=1.0">`,
+            `\t<title>Document</title>`,
+            `\t<style>`,
+            `${this.#compiledCSS.join("\n")}`,
+            `\t</style>`,
+            `</head>`,
+            `<body>`,
+            `\t${htmlBodyContent.join("\n")}`,
+            `</body>`,
+            `</html>`,
+        ]
     }
 
     #captureFunction(lines: string[], startIndex: number, firstWord: string): number {
@@ -345,30 +401,5 @@ export class RueFile {
     getInterface(): RueInterface { return this.#interface }
     getErrors(): string[] { return this.#errors }
     output(path: string): void { writeFileText(path, this.#compiledCSS.join("\n")) }
-
-    getHTML(): string {
-        let bodyContent: string[] = []
-
-        this.#interface.forEach(elem => {
-            if (elem instanceof UIElement)
-                bodyContent.push(elem.getHTML())
-            else bodyContent.push(String(elem))
-        })
-
-        let htmlContent = [
-            `<!DOCTYPE html>`,
-            `<html lang="en">`,
-            `<head>`,
-            `\t<meta charset="UTF-8">`,
-            `\t<meta name="viewport" content="width=device-width, initial-scale=1.0">`,
-            `\t<title>Document</title>`,
-            `</head>`,
-            `<body>`,
-            bodyContent.join(""),
-            `</body>`,
-            `</html>`,
-        ]
-        writeFileText("./index.html", htmlContent.join("\n"))
-        return htmlContent.join("\n")
-    }
+    getHTML(): string { return this.#compiledHTML.join("\n") }
 }

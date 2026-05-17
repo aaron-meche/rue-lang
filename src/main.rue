@@ -2,13 +2,20 @@
 // Rue Programming Language
 //
 
+body{
+    margin: 0
+    background: black
+}
+
 Interface {
     new UIElement({
         margin: 2rem auto
         width: 30rem
         padding: 1.2rem
-        background: rgb(240, 240, 240)
+        background: black
+        color: white
         border_radius: 0.8rem
+        box_shadow: 0 0 10rem black
         content: [
             new Wrapper("Welcome to RueUI!", {
                 margin_bottom: 0.8rem
