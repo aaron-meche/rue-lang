@@ -25,7 +25,6 @@ declare global {
     }
 }
 
-let docBody: HTMLElement | null = null
 let stateManager: Record<string, StateRenderer> = {}
 
 const attributeKeys = new Set([
@@ -59,33 +58,14 @@ function escapeAttribute(value: UIValue): string {
 }
 
 export function toHTML(input: UIContent): string {
-    if (input === null || input === undefined || input === false) return ""
-    if (Array.isArray(input)) return input.map(item => toHTML(item)).join("")
+    if (input === null || input === undefined || input === false)
+        return ""
+    if (Array.isArray(input))
+        return input.map(item => toHTML(item)).join("")
     if (typeof (input as { getHTML?: unknown })?.getHTML == "function") {
         return (input as { getHTML: () => string }).getHTML()
     }
     return String(input)
-}
-
-function normalizeContent(contents: UIContent | UIConfig): UIContent[] | null {
-    if (Array.isArray(contents)) return contents
-    if ((contents as UIConfig)?.app !== undefined) return (contents as UIConfig).app as UIContent[]
-    if ((contents as UIConfig)?.body !== undefined) return (contents as UIConfig).body as UIContent[]
-    if ((contents as UIConfig)?.main !== undefined) return (contents as UIConfig).main as UIContent[]
-    if (typeof contents === "string" || typeof (contents as { getHTML?: unknown })?.getHTML == "function") {
-        return [contents]
-    }
-    return null
-}
-
-function resolveTarget(target?: string | Element | null): Element {
-    if (!target) return document.body
-    if (typeof target == "string") {
-        let resolved = document.querySelector(target)
-        if (!resolved) throw new Error(`Rue UI could not find target "${target}".`)
-        return resolved
-    }
-    return target
 }
 
 function checkWindowEventRegistry(): void {
@@ -95,18 +75,15 @@ function checkWindowEventRegistry(): void {
             hoverState: new Map()
         }
     }
-
     if (!window.clickRegistry) {
         window.clickRegistry = window.gingerUIRegistry.handlers
     }
-
     if (!window.dispatchClick) {
         window.dispatchClick = (id, elem) => {
             let handler = window.gingerUIRegistry?.handlers.get(id)
             if (typeof handler == "function") handler(elem)
         }
     }
-
     if (!window.dispatchHover) {
         window.dispatchHover = (id, elem) => {
             let handler = window.gingerUIRegistry?.handlers.get(id)
@@ -116,7 +93,6 @@ function checkWindowEventRegistry(): void {
             }
         }
     }
-
     if (!window.dispatchHoverOut) {
         window.dispatchHoverOut = (id, elem) => {
             let originalStyle = window.gingerUIRegistry?.hoverState.get(id)
@@ -128,34 +104,12 @@ function checkWindowEventRegistry(): void {
     }
 }
 
-export class Interface {
-    constructor(contents: UIConfig = {}, options: UIConfig = {}) {
-        if (!isBrowser()) return
-
-        docBody = document.body
-        docBody.style.margin = "0"
-
-        let target = resolveTarget((options.target ?? contents.target) as string | Element | null | undefined)
-        let bodyTarget = normalizeContent(contents)
-
-        if (!bodyTarget || !Array.isArray(bodyTarget)) {
-            throw new Error("Invalid or missing app, body, or main input to Interface.")
-        }
-
-        target.innerHTML = toHTML(bodyTarget)
-    }
-}
-
 export class UIElement {
     tag = "div"
     src: string | null = null
     self = false
     content = ""
-
-    format: UIConfig = {
-        display: "block"
-    }
-
+    format: UIConfig = {}
     attributes: UIConfig = {}
     behaviors: Record<string, string> = {}
     identifiers: UIConfig = {}
@@ -259,12 +213,15 @@ export class UIElement {
             let currConfigKey = configKeys[i]
             let currConfigValue = config[currConfigKey]
 
+            // First, check protocols for key
             if (this.protocols[currConfigKey]) {
                 this.protocols[currConfigKey](currConfigValue)
             }
+            // Next, check attributes for key
             else if (attributeKeys.has(currConfigKey)) {
                 this.attributes[currConfigKey === "className" ? "class" : currConfigKey] = currConfigValue
             }
+            // Then, set format value at key
             else {
                 this.format[currConfigKey] = currConfigValue
             }

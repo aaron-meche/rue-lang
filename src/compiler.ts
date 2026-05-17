@@ -35,7 +35,7 @@ export interface RueFunctionDefinition {
 export class RueFile {
     #rawText: string = ""               // Raw text content of imported file (.rue syntax)
     #cssOnion: string[] = []            // Array used to track real-time css attribute tree
-    #cssMap: RueCSSMap = {}             // JS Map that stores parsed CSS data, pre-compilation
+    #cssMap: RueCSSMap = { ":root": [] }// JS Map that stores parsed CSS data, pre-compilation
     #funcMap: RueFunctionMap = {}       // JS Map that stores parsed JS signatures and functions
     #interface: RueInterface = []       // Array that stores the Rue Interface stack
     #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.
@@ -194,49 +194,48 @@ export class RueFile {
         if (!startLine.includes("{")) { this.#throwError(signature.name, "missing opening brace"); return 0 }
 
         let paramNames = signature.params.map(param => param.split("=")[0].trim())
+        let isComponent = firstWord == "component"
 
         for (let i = startIndex + 1; i < lines.length; i++) {
             let rawLine = stripLineComment(lines[i]).trim()
             if (!rawLine) continue
 
-            if (rawLine == "}") {
-                if (depth == 0) {
-                    try {
-                        let params = signature.params || []
-                        let runtimeNames = Object.keys(RueUIRuntime)
-                        let runtimeValues = Object.values(RueUIRuntime)
-                        let callable = new Function(...runtimeNames, ...params, body.join("\n"))
+            if (rawLine == "}" && depth == 0) {
+                try {
+                    let params = signature.params || []
+                    let runtimeNames = Object.keys(RueUIRuntime)
+                    let runtimeValues = Object.values(RueUIRuntime)
+                    let callable = new Function(...runtimeNames, ...params, body.join("\n"))
 
-                        this.#funcMap[signature.name] = {
-                            name: signature.name,
-                            params: params,
-                            body: body,
-                            function: ((...args: unknown[]) => callable(...runtimeValues, ...args)) as RueCallable,
-                        }
+                    this.#funcMap[signature.name] = {
+                        name: signature.name,
+                        params: params,
+                        body: body,
+                        function: ((...args: unknown[]) => callable(...runtimeValues, ...args)) as RueCallable,
                     }
-                    catch (error) {
-                        this.#throwError("add func", error)
-                    }
-
-                    return i - startIndex
                 }
-                depth--
-                body.push(this.#compileRueObjectLine(rawLine, paramNames))
-                continue
+                catch (error) {
+                    this.#throwError("add func", error)
+                }
+
+                return i - startIndex
             }
 
-            if (rawLine.includes("}") && depth > 0) {
-                depth--
-                body.push(rawLine)
-                continue
+            let closesTopLevelExpression = (rawLine.includes("}") || rawLine.includes("]")) && depth == 1
+            let bodyLine = closesTopLevelExpression ? rawLine : this.#compileRueObjectLine(rawLine, paramNames)
+
+            if (
+                isComponent &&
+                body.length == 0 &&
+                !bodyLine.startsWith("return ") &&
+                (rawLine.startsWith("new ") || /^[A-Za-z_$][\w$]*\s*\(/.test(rawLine))
+            ) {
+                bodyLine = "return " + bodyLine
             }
 
-            let bodyLine = this.#compileRueObjectLine(rawLine, paramNames)
             body.push(bodyLine)
 
-            if (rawLine.endsWith("{")) {
-                depth++
-            }
+            depth += countRueScopeDepth(rawLine)
         }
 
         this.#throwError("Parse", "unclosed function block")
@@ -290,6 +289,7 @@ export class RueFile {
         if (raw == "}" || raw == "]") return raw + ","
         if (raw.startsWith("return ") || raw.endsWith("{") || raw.endsWith("[")) return line
         if (raw.includes("}") || raw.includes("]")) return raw + ","
+        if (raw.startsWith("new ")) return raw + ","
         if (!raw.includes(":") && this.#isJavascriptStatement(raw)) return line
 
         let knownNames = new Set([...localNames, ...Object.keys(RueUIRuntime)])
@@ -326,7 +326,6 @@ export class RueFile {
     #isJavascriptStatement(line: string): boolean {
         return (
             line.includes("=") ||
-            line.includes(".") ||
             line.startsWith("let ") ||
             line.startsWith("const ") ||
             line.startsWith("var ") ||
@@ -384,8 +383,10 @@ export class RueFile {
         let varName = definition.split(":")[0]?.trim()
         let varValue = definition.slice(definition.indexOf(":") + 1).trim()
 
-        if (!definition.includes(":") || !varName) return this.#throwError("var", "invalid variable definition")
-
+        if (!definition.includes(":") || !varName)
+            return this.#throwError("var", "invalid variable definition")
+        if (!this.#cssMap[":root"])
+            this.#cssMap[":root"] = []
         this.#cssMap[":root"].push(ensureSemicolon("--" + varName + ": " + this.#resolveString(varValue)))
     }
 

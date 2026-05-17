@@ -2,31 +2,133 @@
 // Rue Programming Language
 //
 
-body{
-    margin: 0
-    background: black
+function getColor(level, opacity = 1) {
+    let hue = 230
+    let ssat = 0
+    let dsat = 4
+    let slgh = 0
+    let dlgh = 6
+    return `hsl(${hue}, ${ssat + dsat * level}%, ${slgh + dlgh * level}%, ${opacity})`
 }
 
-Interface {
+def bg: getColor(0)
+def l1: getColor(1)
+def l2: getColor(2)
+def l3: getColor(3)
+def l4: getColor(4)
+def l5: getColor(5)
+def l6: getColor(6)
+def l7: getColor(7)
+
+body{
+    margin: 0
+    background: var(--bg)
+    font-family: Verdana, sans-serif
+    color: white
+}
+
+.nav-button-wrapper *{
+    padding: 0.6rem 1rem
+    font-size: 0.75rem
+    letter-spacing: 0.24pt
+    border-radius: 0.4rem
+    transition: background 80ms, opacity 80ms
+    opacity: 0.8
+    cursor: pointer
+
+    :hover{
+        background: var(--l2)
+        opacity: 1
+    }
+}
+
+component NavigationBar() {
     new UIElement({
-        margin: 2rem auto
-        width: 30rem
-        padding: 1.2rem
-        background: black
-        color: white
-        border_radius: 0.8rem
-        box_shadow: 0 0 10rem black
+        display: grid
+        grid_template_columns: auto min-content
+        align_items: center
+        padding: 1.2rem 2.4rem
+        border_bottom: solid 1pt var(--l2)
         content: [
-            new Wrapper("Welcome to RueUI!", {
-                margin_bottom: 0.8rem
-                font_size: 2.4rem
-                font_weight: 500
+            new UIElement({
+                display: flex
+                align_items: center
+                gap: 0.8rem
+                font_weight: 600
+                content: [
+                    new Image("small-pfp.png", {
+                        height: 2rem
+                        border-radius: 100vh
+                    })
+                    "Aaron Meche"
+                ]
             })
-            new Wrapper("Born from the combination of both Rue Lang and GingerUI, RueUI is a powerful, lightweight, and user-friendly JavaScript powered UI engine.", {
-                font_size: 1.2rem
-                font_weight: 500
-                line_height: 1.4
+            new UIElement({
+                className: nav-button-wrapper
+                display: flex
+                align_items: center
+                content: [
+                    new Wrapper("Projects")
+                    new Wrapper("Education")
+                    new Wrapper("GitHub")
+                    new Wrapper("LinkedIn")
+                ]
             })
         ]
     })
+}
+
+component NameHeroSection() {
+    new UIElement({
+        display: grid
+        gap: 1rem
+        margin_block: 20rem
+        padding_inline: 3rem
+        content: [
+            new Wrapper("Software Engineer", {
+                font_size: 0.8rem
+                font_weight: 500
+                letter_spacing: 0.6pt
+                text_transform: uppercase
+                color: hsl(260, 100%, 70%)
+            })
+            new Wrapper("Aaron Meche", {
+                font_size: 4.5rem
+                font_weight: 1000
+                letter_spacing: -2pt
+            })
+            new Wrapper("Senior @ Louisiana State University · c/o 2026", {
+                font_size: 1.2rem
+                font_weight: 300
+                opacity: 0.75
+            })
+            new Wrapper("Lake Charles, LA", {
+                font_size: 0.9rem
+                font_weight: 500,
+                opacity: 0.5
+            })
+        ]
+    })
+}
+
+component FeaturedProjects() {
+    new UIElement({
+        padding: 0 2.4rem
+        content: [
+            new Wrapper("Featured Projects", {
+                font_size: 0.9rem
+                font_weight: 600
+                opacity: 0.5
+            })
+            new UIElement({
+                display: grid
+            })
+        ]
+    })
+}
+
+Interface {
+    NavigationBar()
+    NameHeroSection()
+    FeaturedProjects()
 }
