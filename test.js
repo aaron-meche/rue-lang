@@ -7,4 +7,5 @@
 
 import { RueFile } from "rue-lang"
 
-let file = new RueFile("./main.rue")
+let file = new RueFile("./src/main.rue")
+file.getHTML()

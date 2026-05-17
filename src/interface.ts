@@ -211,6 +211,13 @@ export class UIElement {
             else throw new Error("unsupported 'size' input")
         },
         onhover: input => {
+            if (!isBrowser()) {
+                let handler = typeof input == "function" ? input.toString() : String(input)
+                this.behaviors.onmouseenter = `this.dataset.rueHoverStyle=this.style.cssText;(${handler})(this);`
+                this.behaviors.onmouseleave = `if(this.dataset.rueHoverStyle!==undefined){this.style.cssText=this.dataset.rueHoverStyle;delete this.dataset.rueHoverStyle;}`
+                return
+            }
+
             checkWindowEventRegistry()
             let id = "hov_" + Math.random().toString(36).substring(2, 11)
             window.gingerUIRegistry?.handlers.set(id, input as UIHandler)
@@ -218,6 +225,12 @@ export class UIElement {
             this.behaviors.onmouseleave = `window.dispatchHoverOut('${id}', this);`
         },
         onclick: input => {
+            if (!isBrowser()) {
+                let handler = typeof input == "function" ? input.toString() : String(input)
+                this.behaviors.onclick = `(${handler})(this);`
+                return
+            }
+
             checkWindowEventRegistry()
             let id = "clk_" + Math.random().toString(36).substring(2, 11)
             window.gingerUIRegistry?.handlers.set(id, input as UIHandler)

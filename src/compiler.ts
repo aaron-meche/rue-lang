@@ -15,13 +15,14 @@ import {
     type RueFunctionSignature
 } from './helpers.js';
 import * as RueUIRuntime from './interface.js';
+import { UIElement } from './interface.js';
 
 //
 // Type Exports
 export type RueCSSMap = Record<string, string[]>
 export type RueCallable = (...params: unknown[]) => unknown
 export type RueFunctionMap = Record<string, RueFunctionDefinition>
-export type RueInterface = Record<string, unknown>
+export type RueInterface = unknown[]
 export type { RueFunctionSignature } from './helpers.js';
 export interface RueFunctionDefinition {
     name: string
@@ -37,7 +38,7 @@ export class RueFile {
     #cssOnion: string[] = []            // Reference used to track real-time css attribute tree
     #cssMap: RueCSSMap = {":root": []}  // JS Map that stores CSS data, pre-compilation
     #funcMap: RueFunctionMap = {}       // JS Map that stores JS functions defined in .rue
-    #interface: RueInterface = {}       // JS object that stores the Rue Interface block
+    #interface: RueInterface = []       // JS array that stores the Rue Interface block
     #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.
 
     #errors: string[] = []              // Array for caught errors
@@ -74,7 +75,7 @@ export class RueFile {
         this.#cssOnion = []
         this.#cssMap = { ":root": [] }
         this.#funcMap = {}
-        this.#interface = {}
+        this.#interface = []
         this.#compiledCSS = []
         this.#errors = []
     }
@@ -168,14 +169,13 @@ export class RueFile {
                 continue
             }
 
-            let bodyLine = this.#compileRueObjectLine(rawLine, paramNames)
-
             if (rawLine.includes("}") && depth > 0) {
                 depth--
-                body.push(bodyLine)
+                body.push(rawLine)
                 continue
             }
 
+            let bodyLine = this.#compileRueObjectLine(rawLine, paramNames)
             body.push(bodyLine)
 
             if (rawLine.endsWith("{")) {
@@ -206,7 +206,7 @@ export class RueFile {
                     let contextNames = Object.keys(context)
                     let values = Object.values(context)
                     let interfaceBody = body.join("\n")
-                    let buildInterface = new Function(...contextNames, "return ({\n" + interfaceBody + "\n})")
+                    let buildInterface = new Function(...contextNames, "return ([\n" + interfaceBody + "\n])")
 
                     this.#interface = buildInterface(...values) as RueInterface
                 }
@@ -233,10 +233,12 @@ export class RueFile {
 
         if (raw == "}" || raw == "]") return raw + ","
         if (raw.startsWith("return ") || raw.endsWith("{") || raw.endsWith("[")) return line
-        if (raw.includes("}")) return line
+        if (raw.includes("}") || raw.includes("]")) return raw + ","
+        if (!raw.includes(":") && this.#isJavascriptStatement(raw)) return line
 
         let knownNames = new Set([...localNames, ...Object.keys(RueUIRuntime)])
         let compileValue = (value: string): string => {
+            let callName = value.match(/^([A-Za-z_$][\w$]*)\s*\(/)?.[1]
             let isJavascriptValue =
                 value[0] == "\"" ||
                 value[0] == "'" ||
@@ -244,7 +246,8 @@ export class RueFile {
                 !Number.isNaN(Number(value)) ||
                 ["true", "false", "null", "undefined"].includes(value) ||
                 knownNames.has(value) ||
-                value.includes("(") ||
+                value.startsWith("new ") ||
+                (callName != undefined && knownNames.has(callName)) ||
                 value.includes("[") ||
                 value.includes("{")
 
@@ -259,8 +262,23 @@ export class RueFile {
         let value = raw.slice(colonIndex + 1).trim()
 
         if (!key || !value) return line
+        if (!/^[$A-Z_a-z][$\w]*$/.test(key) && key[0] != "\"" && key[0] != "'") key = JSON.stringify(key)
 
         return key + ": " + compileValue(value) + ","
+    }
+
+    #isJavascriptStatement(line: string): boolean {
+        return (
+            line.includes("=") ||
+            line.includes(".") ||
+            line.startsWith("let ") ||
+            line.startsWith("const ") ||
+            line.startsWith("var ") ||
+            line.startsWith("if ") ||
+            line.startsWith("for ") ||
+            line.startsWith("while ") ||
+            line.startsWith("switch ")
+        )
     }
 
     #processStyleCaptureLine(line: string, firstWord: string): void {
@@ -327,4 +345,30 @@ export class RueFile {
     getInterface(): RueInterface { return this.#interface }
     getErrors(): string[] { return this.#errors }
     output(path: string): void { writeFileText(path, this.#compiledCSS.join("\n")) }
+
+    getHTML(): string {
+        let bodyContent: string[] = []
+
+        this.#interface.forEach(elem => {
+            if (elem instanceof UIElement)
+                bodyContent.push(elem.getHTML())
+            else bodyContent.push(String(elem))
+        })
+
+        let htmlContent = [
+            `<!DOCTYPE html>`,
+            `<html lang="en">`,
+            `<head>`,
+            `\t<meta charset="UTF-8">`,
+            `\t<meta name="viewport" content="width=device-width, initial-scale=1.0">`,
+            `\t<title>Document</title>`,
+            `</head>`,
+            `<body>`,
+            bodyContent.join(""),
+            `</body>`,
+            `</html>`,
+        ]
+        writeFileText("./index.html", htmlContent.join("\n"))
+        return htmlContent.join("\n")
+    }
 }

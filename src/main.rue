@@ -1,0 +1,25 @@
+//
+// Rue Programming Language
+//
+
+Interface {
+    new UIElement({
+        margin: 2rem auto
+        width: 30rem
+        padding: 1.2rem
+        background: rgb(240, 240, 240)
+        border_radius: 0.8rem
+        content: [
+            new Wrapper("Welcome to RueUI!", {
+                margin_bottom: 0.8rem
+                font_size: 2.4rem
+                font_weight: 500
+            })
+            new Wrapper("Born from the combination of both Rue Lang and GingerUI, RueUI is a powerful, lightweight, and user-friendly JavaScript powered UI engine.", {
+                font_size: 1.2rem
+                font_weight: 500
+                line_height: 1.4
+            })
+        ]
+    })
+}
