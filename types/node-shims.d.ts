@@ -1,8 +1,15 @@
 declare module "fs" {
+	interface Dirent {
+		name: string
+		isDirectory(): boolean
+	}
+
 	const fs: {
 		readFileSync(path: string, encoding: string): string
 		writeFileSync(path: string, content: string): void
 		mkdirSync(path: string, options?: { recursive?: boolean }): void
+		existsSync(path: string): boolean
+		readdirSync(path: string, options: { withFileTypes: true }): Dirent[]
 	}
 
 	export default fs
@@ -11,7 +18,10 @@ declare module "fs" {
 declare module "path" {
 	const path: {
 		dirname(path: string): string
+		join(...paths: string[]): string
+		relative(from: string, to: string): string
 		resolve(...paths: string[]): string
+		sep: string
 	}
 
 	export default path

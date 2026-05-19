@@ -5,7 +5,5 @@
 //
 
 Interface {
-    new UIWrapper({
-        content: "This is the Education page"
-    })
+    new Wrapper("This is the Education page")
 }

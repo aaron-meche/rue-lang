@@ -6,10 +6,12 @@
 //
 
 import { RueFile } from './compiler.js'
+import { RueRouter } from './router.js'
 import createRueVitePlugin, { type RueVitePlugin } from './vite-plugin.js'
 
-export { RueFile }
+export { RueFile, RueRouter }
 export * from './interface.js'
+export * from './router.js'
 
 export interface RuePreprocessorResult {
     code: string

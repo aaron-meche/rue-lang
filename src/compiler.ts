@@ -147,12 +147,7 @@ export class RueFile {
         }
 
         // Compile HTML
-        let htmlBodyContent: string[] = []
-        this.#interface.forEach(elem => {
-            if (elem instanceof UIElement)
-                htmlBodyContent.push(elem.getHTML())
-            else htmlBodyContent.push(String(elem))
-        })
+        let htmlBodyContent: string[] = [RueUIRuntime.toHTML(this.#interface)]
 
         // Check for Errors, (if) Insert into HTML
         if (this.#errors.length > 0) {
@@ -271,6 +266,7 @@ export class RueFile {
     #buildRunnableContext(): Record<string, unknown> {
         return {
             ...buildRunnableContext(RueUIRuntime, this.#funcMap),
+            Interface: this.#interface,
             __rueState: new RueUIRuntime.StateStore(this.#stateMap)
         }
     }
