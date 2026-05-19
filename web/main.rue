@@ -4,6 +4,16 @@
 // Rue Programming Language
 //
 
+{
+    window.onload(() => {
+        alert("Hello there, you person!")
+    })
+
+    function decorations() {
+        document.body.style.background = "yellow"
+    }
+}
+
 component NameHeroSection() {
     new UIElement({
         display: grid

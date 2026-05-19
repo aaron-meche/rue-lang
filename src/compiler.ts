@@ -41,6 +41,7 @@ export class RueFile {
     #funcMap: RueFunctionMap = {}       // JS Map that stores parsed JS signatures and functions
     #stateMap: RueStateMap = {}         // JS Map that stores live state variables and values
     #interface: RueInterface = []       // Array that stores the Rue Interface stack
+    #rawJS: string[] = []               // Raw JavaScript blocks inserted into compiled HTML
     #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.
     #compiledHTML: string[] = []        // Array of compiled HTML lines ready to be joined
     #currLineIndex: number = 0          // Number used for real-time active line tracking for errors
@@ -81,6 +82,7 @@ export class RueFile {
         this.#funcMap = {}
         this.#stateMap = {}
         this.#interface = []
+        this.#rawJS = []
         this.#compiledCSS = []
         this.#errors = []
         RueUIRuntime.resetStateRenderers()
@@ -106,6 +108,10 @@ export class RueFile {
                     case "//":
                     case "<!--":
                         continue
+                    // Raw JavaScript
+                    case "{":
+                        this.#captureRawJS(lineSplitText)
+                        break
                     // State Variables
                     case "@state":
                         this.#newStateVariable(line)
@@ -148,6 +154,7 @@ export class RueFile {
 
         // Compile HTML
         let htmlBodyContent: string[] = [RueUIRuntime.toHTML(this.#interface)]
+        let htmlScripts = [this.#buildStateScript(), this.#buildRawJSScript()].filter(Boolean).join("\n")
 
         // Check for Errors, (if) Insert into HTML
         if (this.#errors.length > 0) {
@@ -183,7 +190,7 @@ export class RueFile {
             `</head>`,
             `<body>`,
             `${htmlBodyContent.join("\n")}`,
-            `${this.#buildStateScript()}`,
+            `${htmlScripts}`,
             `</body>`,
             `</html>`,
         ]
@@ -205,6 +212,33 @@ export class RueFile {
 
     #buildStateScript(): string {
         return buildStateScript(this.#stateMap, RueUIRuntime.getStateRenderers())
+    }
+
+    #buildRawJSScript(): string {
+        if (!this.#rawJS.length) return ""
+        return `<script>\n${this.#rawJS.join("\n\n")}\n</script>`
+    }
+
+    #captureRawJS(lines: string[]): void {
+        let body: string[] = []
+        let depth = countRueScopeDepth(stripLineComment(lines[this.#currLineIndex]).trim())
+
+        for (let i = this.#currLineIndex + 1; i < lines.length; i++) {
+            let line = stripLineComment(lines[i]).trim()
+            let nextDepth = depth + countRueScopeDepth(line)
+
+            if (nextDepth <= 0) {
+                this.#currLineIndex = i
+                this.#rawJS.push(body.join("\n"))
+                return
+            }
+
+            body.push(lines[i])
+            depth = nextDepth
+        }
+
+        this.#currLineIndex = lines.length - 1
+        this.#throwError("raw js", "unclosed raw JavaScript block")
     }
 
     #addFunction(lines: string[]): void {
