@@ -45,32 +45,32 @@ body{
 component NavigationBar() {
     new UIElement({
         display: grid
-        grid_template_columns: auto min-content
+        grid-template-columns: auto min-content
         align_items: center
         padding: 1.2rem 2.4rem
-        border_bottom: solid 1pt var(--l2)
+        border-bottom: solid 1pt var(--l2)
         content: [
             new UIElement({
                 display: flex
-                align_items: center
+                align-items: center
                 gap: 0.8rem
-                font_weight: 600
+                font-weight: 600
                 content: [
                     new Image("small-pfp.png", {
                         height: 2rem
                         border-radius: 100vh
-                    })
+                    }),
                     "Aaron Meche"
                 ]
-            })
+            }),
             new UIElement({
                 className: nav-button-wrapper
                 display: flex
-                align_items: center
+                align-items: center
                 content: [
-                    new Wrapper("Projects")
-                    new Wrapper("Education")
-                    new Wrapper("GitHub")
+                    new Wrapper("Projects"),
+                    new Wrapper("Education"),
+                    new Wrapper("GitHub"),
                     new Wrapper("LinkedIn")
                 ]
             })
@@ -78,39 +78,41 @@ component NavigationBar() {
     })
 }
 
+// function NameHeroSection() {
 component NameHeroSection() {
     new UIElement({
         display: grid
         gap: 1rem
-        margin_block: 20rem
-        padding_inline: 3rem
+        margin-block: 20rem
+        padding-inline: 3rem
         content: [
             new Wrapper("Software Engineer", {
-                font_size: 0.8rem
-                font_weight: 500
-                letter_spacing: 0.6pt
-                text_transform: uppercase
+                font-size: 0.8rem 
+                font-weight: 500
+                letter-spacing: 0.6pt
+                text-transform: uppercase
                 color: hsl(260, 100%, 70%)
             })
             new Wrapper("Aaron Meche", {
-                font_size: 4.5rem
-                font_weight: 1000
-                letter_spacing: -2pt
+                font-size: 4.5rem
+                font-weight: 1000
+                letter-spacing: -2pt
             })
             new Wrapper("Senior @ Louisiana State University · c/o 2026", {
-                font_size: 1.2rem
-                font_weight: 300
+                font-size: 1.2rem
+                font-weight: 300
                 opacity: 0.75
             })
             new Wrapper("Lake Charles, LA", {
-                font_size: 0.9rem
-                font_weight: 500,
+                font-size: 0.9rem
+                font-weight: 500
                 opacity: 0.5
             })
         ]
     })
 }
 
+// function FeaturedProjects()
 component FeaturedProjects() {
     new UIElement({
         padding: 0 2.4rem
@@ -127,8 +129,26 @@ component FeaturedProjects() {
     })
 }
 
+component LiveCounter() {
+    new UIElement({
+        text-align: center;
+        content: [
+            new UIElement({
+                content: () => {
+                    "Live Counter: " + counter.get("count")
+                }
+            })
+            new Button("+", {
+                onclick: () => counter.set("count", counter.get("count") + 1)
+            })
+        ]
+    })
+}
+
+// export const Interface = {
 Interface {
     NavigationBar()
     NameHeroSection()
     FeaturedProjects()
+    // LiveCounter()
 }

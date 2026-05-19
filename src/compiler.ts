@@ -105,11 +105,11 @@ export class RueFile {
                     case "func":
                     case "function":
                     case "component":
-                        this.#currLineIndex += this.#captureFunction(lineSplitText, this.#currLineIndex, firstWord)
+                        this.#addFunction(lineSplitText)
                         break
                     // Interface
                     case "Interface":
-                        this.#currLineIndex += this.#captureInterface(lineSplitText, this.#currLineIndex)
+                        this.#getInterface(lineSplitText)
                         break
                     // CSS Styles
                     default:
@@ -170,170 +170,142 @@ export class RueFile {
             `<!DOCTYPE html>`,
             `<html lang="en">`,
             `<head>`,
-            `\t<meta charset="UTF-8">`,
-            `\t<meta name="viewport" content="width=device-width, initial-scale=1.0">`,
-            `\t<title>Document</title>`,
-            `\t<style>`,
+            `<meta charset="UTF-8">`,
+            `<meta name="viewport" content="width=device-width, initial-scale=1.0">`,
+            `<title>Document</title>`,
+            `<style>`,
             `${this.#compiledCSS.join("\n")}`,
-            `\t</style>`,
+            `</style>`,
             `</head>`,
             `<body>`,
-            `\t${htmlBodyContent.join("\n")}`,
+            `${htmlBodyContent.join("\n")}`,
             `</body>`,
             `</html>`,
         ]
     }
 
-    #captureFunction(lines: string[], startIndex: number, firstWord: string): number {
+    #addFunction(lines: string[]): void {
+        let startIndex = this.#currLineIndex
         let startLine = stripLineComment(lines[startIndex]).trim()
+        let firstWord = startLine.split(" ")[0]
         let signature = extractFunctionCalls(startLine)?.[0]
-        let body: string[] = []
-        let depth = 0
 
-        if (!signature?.name)    { this.#throwError(firstWord, "invalid function signature"); return 0 }
-        if (!startLine.includes("{")) { this.#throwError(signature.name, "missing opening brace"); return 0 }
+        if (!signature?.name) { this.#throwError(firstWord, "invalid function signature"); return }
+        if (!startLine.includes("{")) { this.#throwError(signature.name, "missing opening brace"); return }
 
-        let paramNames = signature.params.map(param => param.split("=")[0].trim())
-        let isComponent = firstWord == "component"
+        let localNames = signature.params.map(param => param.split("=")[0].trim())
+        let knownNames = [...localNames, ...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime)]
+        let body = this.#captureBlock(lines, startIndex, 2, knownNames)
 
-        for (let i = startIndex + 1; i < lines.length; i++) {
-            let rawLine = stripLineComment(lines[i]).trim()
-            if (!rawLine) continue
+        if (firstWord == "component" && body[0] && !body[0].startsWith("return "))
+            body[0] = "return " + body[0]
 
-            if (rawLine == "}" && depth == 0) {
-                try {
-                    let params = signature.params || []
-                    let runtimeNames = Object.keys(RueUIRuntime)
-                    let runtimeValues = Object.values(RueUIRuntime)
-                    let callable = new Function(...runtimeNames, ...params, body.join("\n"))
+        try {
+            let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
+            let contextNames = Object.keys(context)
+            let contextValues = Object.values(context)
+            let callable = new Function(...contextNames, ...signature.params, body.join("\n"))
 
-                    this.#funcMap[signature.name] = {
-                        name: signature.name,
-                        params: params,
-                        body: body,
-                        function: ((...args: unknown[]) => callable(...runtimeValues, ...args)) as RueCallable,
-                    }
-                }
-                catch (error) {
-                    this.#throwError("add func", error)
-                }
-
-                return i - startIndex
+            this.#funcMap[signature.name] = {
+                name: signature.name,
+                params: signature.params,
+                body: body,
+                function: ((...args: unknown[]) => callable(...contextValues, ...args)) as RueCallable,
             }
-
-            let closesTopLevelExpression = (rawLine.includes("}") || rawLine.includes("]")) && depth == 1
-            let bodyLine = closesTopLevelExpression ? rawLine : this.#compileRueObjectLine(rawLine, paramNames)
-
-            if (
-                isComponent &&
-                body.length == 0 &&
-                !bodyLine.startsWith("return ") &&
-                (rawLine.startsWith("new ") || /^[A-Za-z_$][\w$]*\s*\(/.test(rawLine))
-            ) {
-                bodyLine = "return " + bodyLine
-            }
-
-            body.push(bodyLine)
-
-            depth += countRueScopeDepth(rawLine)
         }
-
-        this.#throwError("Parse", "unclosed function block")
-        return lines.length - startIndex - 1
+        catch (error) {
+            this.#throwError("add func", error)
+        }
     }
 
-    #captureInterface(lines: string[], startIndex: number): number {
-        let line = stripLineComment(lines[startIndex]).trim()
+    #getInterface(lines: string[]): void {
+        let startIndex = this.#currLineIndex
+        let startLine = stripLineComment(lines[startIndex]).trim()
 
-        if (!line.includes("{")) { this.#throwError("Interface", "missing opening brace"); return 0 }
+        if (!startLine.includes("{")) { this.#throwError("Interface", "missing opening brace"); return }
 
-        let body: string[] = []
-        let depth = 0
         let knownNames = [...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime)]
+        let body = this.#captureBlock(lines, startIndex, 1, knownNames)
+
+        try {
+            let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
+            let contextNames = Object.keys(context)
+            let contextValues = Object.values(context)
+            let buildInterface = new Function(...contextNames, "return ([\n" + body.join("\n") + "\n])")
+
+            this.#interface = buildInterface(...contextValues) as RueInterface
+        }
+        catch (error) {
+            this.#throwError("Interface", error)
+        }
+    }
+
+    #captureBlock(lines: string[], startIndex: number, commaDepth: number = 2, knownNames: string[] = []): string[] {
+        let body: string[] = []
+        let startLine = stripLineComment(lines[startIndex]).trim()
+        let depth = countRueScopeDepth(startLine)
 
         for (let i = startIndex + 1; i < lines.length; i++) {
-            let bodyLine = stripLineComment(lines[i]).trim()
-            if (!bodyLine) continue
+            let currLine = stripLineComment(lines[i]).trim()
+            if (!currLine) continue
 
-            if (bodyLine == "}" && depth == 0) {
-                try {
-                    let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
-                    let contextNames = Object.keys(context)
-                    let values = Object.values(context)
-                    let interfaceBody = body.join("\n")
-                    let buildInterface = new Function(...contextNames, "return ([\n" + interfaceBody + "\n])")
-
-                    this.#interface = buildInterface(...values) as RueInterface
-                }
-                catch (error) {
-                    this.#throwError("Interface", error)
-                }
-
-                return i - startIndex
+            let nextDepth = depth + countRueScopeDepth(currLine)
+            if (nextDepth <= 0) {
+                this.#currLineIndex = i
+                return body
             }
 
-            body.push(this.#compileRueObjectLine(bodyLine, knownNames))
-            depth += countRueScopeDepth(bodyLine)
+            body.push(this.#prepareBlockLine(currLine, nextDepth, commaDepth, knownNames))
+            depth = nextDepth
         }
 
-        this.#throwError("Parse", "unclosed Interface block")
-        return lines.length - startIndex - 1
+        this.#currLineIndex = lines.length - 1
+        this.#throwError("Parse", "unclosed block")
+        return body
     }
 
-    #compileRueObjectLine(line: string, localNames: string[]): string {
-        let raw = line.trim()
-        if (!raw) return line
+    #prepareBlockLine(line: string, depth: number, commaDepth: number, knownNames: string[]): string {
+        let hadComma = line.endsWith(",")
+        if (hadComma) line = line.slice(0, -1).trim()
 
-        if (raw.endsWith(",")) raw = raw.slice(0, -1).trim()
+        if (line.endsWith("{") || line.endsWith("[")) return hadComma ? line + "," : line
+        if (line.startsWith("let ") || line.startsWith("const ") || line.startsWith("var ")) return line
+        if (line.includes("=") && !line.includes("=>")) return line
+        if (line.includes(".") && line.includes("(") && !line.startsWith("new ")) return line
 
-        if (raw == "}" || raw == "]") return raw + ","
-        if (raw.startsWith("return ") || raw.endsWith("{") || raw.endsWith("[")) return line
-        if (raw.includes("}") || raw.includes("]")) return raw + ","
-        if (raw.startsWith("new ")) return raw + ","
-        if (!raw.includes(":") && this.#isJavascriptStatement(raw)) return line
+        if (line.includes(":"))
+            line = this.#prepareObjectProperty(line, knownNames)
 
-        let knownNames = new Set([...localNames, ...Object.keys(RueUIRuntime)])
-        let compileValue = (value: string): string => {
-            let callName = value.match(/^([A-Za-z_$][\w$]*)\s*\(/)?.[1]
-            let isJavascriptValue =
-                value[0] == "\"" ||
-                value[0] == "'" ||
-                value[0] == "`" ||
-                !Number.isNaN(Number(value)) ||
-                ["true", "false", "null", "undefined"].includes(value) ||
-                knownNames.has(value) ||
-                value.startsWith("new ") ||
-                (callName != undefined && knownNames.has(callName)) ||
-                value.includes("[") ||
-                value.includes("{")
-
-            return isJavascriptValue ? value : JSON.stringify(value)
-        }
-
-        if (raw.startsWith("...")) return raw + ","
-        if (!raw.includes(":")) return compileValue(raw) + ","
-
-        let colonIndex = raw.indexOf(":")
-        let key = raw.slice(0, colonIndex).trim()
-        let value = raw.slice(colonIndex + 1).trim()
-
-        if (!key || !value) return line
-        if (!/^[$A-Z_a-z][$\w]*$/.test(key) && key[0] != "\"" && key[0] != "'") key = JSON.stringify(key)
-
-        return key + ": " + compileValue(value) + ","
+        return hadComma || depth >= commaDepth ? line + "," : line
     }
 
-    #isJavascriptStatement(line: string): boolean {
-        return (
-            line.includes("=") ||
-            line.startsWith("let ") ||
-            line.startsWith("const ") ||
-            line.startsWith("var ") ||
-            line.startsWith("if ") ||
-            line.startsWith("for ") ||
-            line.startsWith("while ") ||
-            line.startsWith("switch ")
-        )
+    #prepareObjectProperty(line: string, knownNames: string[]): string {
+        let colonIndex = line.indexOf(":")
+        let key = line.slice(0, colonIndex).trim()
+        let value = line.slice(colonIndex + 1).trim()
+
+        if (!/^[A-Za-z_$][\w$-]*$/.test(key) || !value) return line
+        if (!/^[$A-Z_a-z][$\w]*$/.test(key)) key = JSON.stringify(key)
+
+        return key + ": " + this.#prepareObjectValue(value, knownNames)
+    }
+
+    #prepareObjectValue(value: string, knownNames: string[]): string {
+        let callName = value.match(/^([A-Za-z_$][\w$]*)\s*\(/)?.[1]
+        let isJavascriptValue =
+            value[0] == "\"" ||
+            value[0] == "'" ||
+            value[0] == "`" ||
+            value[0] == "[" ||
+            value[0] == "{" ||
+            value.includes("=>") ||
+            value.startsWith("new ") ||
+            !Number.isNaN(Number(value)) ||
+            ["true", "false", "null", "undefined"].includes(value) ||
+            knownNames.includes(value) ||
+            (callName != undefined && knownNames.includes(callName))
+
+        return isJavascriptValue ? value : JSON.stringify(value)
     }
 
     #processStyleCaptureLine(line: string, firstWord: string): void {
