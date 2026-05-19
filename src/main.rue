@@ -129,17 +129,16 @@ component FeaturedProjects() {
     })
 }
 
+@state count = 0
+
 component LiveCounter() {
     new UIElement({
         text-align: center;
         content: [
             new UIElement({
                 content: () => {
-                    "Live Counter: " + counter.get("count")
+                    return "Live Counter: " + @count
                 }
-            })
-            new Button("+", {
-                onclick: () => counter.set("count", counter.get("count") + 1)
             })
         ]
     })

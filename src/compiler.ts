@@ -21,6 +21,7 @@ import { UIElement } from './interface.js';
 export type RueCSSMap = Record<string, string[]>
 export type RueCallable = (...params: unknown[]) => unknown
 export type RueFunctionMap = Record<string, RueFunctionDefinition>
+export type RueStateMap = Record<string, unknown>
 export type RueInterface = unknown[]
 export type { RueFunctionSignature } from './helpers.js';
 export interface RueFunctionDefinition {
@@ -37,6 +38,7 @@ export class RueFile {
     #cssOnion: string[] = []            // Array used to track real-time css attribute tree
     #cssMap: RueCSSMap = { ":root": [] }// JS Map that stores parsed CSS data, pre-compilation
     #funcMap: RueFunctionMap = {}       // JS Map that stores parsed JS signatures and functions
+    #stateMap: RueStateMap = {}         // JS Map that stores live state variables and values
     #interface: RueInterface = []       // Array that stores the Rue Interface stack
     #compiledCSS: string[] = []         // Array of compiled CSS lines ready to be joined.
     #compiledHTML: string[] = []        // Array of compiled HTML lines ready to be joined
@@ -76,6 +78,7 @@ export class RueFile {
         this.#cssOnion = []
         this.#cssMap = {}
         this.#funcMap = {}
+        this.#stateMap = {}
         this.#interface = []
         this.#compiledCSS = []
         this.#errors = []
@@ -101,6 +104,10 @@ export class RueFile {
                     case "//":
                     case "<!--":
                         continue
+                    // State Variables
+                    case "@state":
+                        this.#newStateVariable(line)
+                        break
                     // Functions
                     case "func":
                     case "function":
@@ -184,6 +191,16 @@ export class RueFile {
         ]
     }
 
+    #newStateVariable(line: string): void {
+        if (!line.includes("=")) { this.#throwError("@state var", "missing '=' sign"); return }
+        let splitByEqual = line.split("=")
+        let variableName = splitByEqual[0].replace("@state", "").trim()
+        let varvalString = splitByEqual[1].trim()
+        let valvalNumber = Number(varvalString)
+        let varvalFinal = Number.isFinite(valvalNumber) ? valvalNumber : varvalString
+        this.#stateMap[variableName] = varvalFinal
+    }
+
     #addFunction(lines: string[]): void {
         let startIndex = this.#currLineIndex
         let startLine = stripLineComment(lines[startIndex]).trim()
@@ -194,14 +211,14 @@ export class RueFile {
         if (!startLine.includes("{")) { this.#throwError(signature.name, "missing opening brace"); return }
 
         let localNames = signature.params.map(param => param.split("=")[0].trim())
-        let knownNames = [...localNames, ...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime)]
+        let knownNames = [...localNames, ...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime), "__rueState"]
         let body = this.#captureBlock(lines, startIndex, 2, knownNames)
 
         if (firstWord == "component" && body[0] && !body[0].startsWith("return "))
             body[0] = "return " + body[0]
 
         try {
-            let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
+            let context = this.#buildRunnableContext()
             let contextNames = Object.keys(context)
             let contextValues = Object.values(context)
             let callable = new Function(...contextNames, ...signature.params, body.join("\n"))
@@ -224,11 +241,11 @@ export class RueFile {
 
         if (!startLine.includes("{")) { this.#throwError("Interface", "missing opening brace"); return }
 
-        let knownNames = [...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime)]
+        let knownNames = [...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime), "__rueState"]
         let body = this.#captureBlock(lines, startIndex, 1, knownNames)
 
         try {
-            let context = buildRunnableContext(RueUIRuntime, this.#funcMap)
+            let context = this.#buildRunnableContext()
             let contextNames = Object.keys(context)
             let contextValues = Object.values(context)
             let buildInterface = new Function(...contextNames, "return ([\n" + body.join("\n") + "\n])")
@@ -237,6 +254,13 @@ export class RueFile {
         }
         catch (error) {
             this.#throwError("Interface", error)
+        }
+    }
+
+    #buildRunnableContext(): Record<string, unknown> {
+        return {
+            ...buildRunnableContext(RueUIRuntime, this.#funcMap),
+            __rueState: new RueUIRuntime.StateStore(this.#stateMap)
         }
     }
 
@@ -266,8 +290,12 @@ export class RueFile {
 
     #prepareBlockLine(line: string, depth: number, commaDepth: number, knownNames: string[]): string {
         let hadComma = line.endsWith(",")
-        if (hadComma) line = line.slice(0, -1).trim()
+        let hadSemicolon = line.endsWith(";")
+        if (hadComma || hadSemicolon) line = line.slice(0, -1).trim()
 
+        line = this.#resolveStateReferences(line)
+
+        if (line.startsWith("return ")) return line
         if (line.endsWith("{") || line.endsWith("[")) return hadComma ? line + "," : line
         if (line.startsWith("let ") || line.startsWith("const ") || line.startsWith("var ")) return line
         if (line.includes("=") && !line.includes("=>")) return line
@@ -276,7 +304,11 @@ export class RueFile {
         if (line.includes(":"))
             line = this.#prepareObjectProperty(line, knownNames)
 
-        return hadComma || depth >= commaDepth ? line + "," : line
+        return hadComma || hadSemicolon || depth >= commaDepth ? line + "," : line
+    }
+
+    #resolveStateReferences(line: string): string {
+        return line.replace(/@([A-Za-z_$][\w$]*)/g, (_, name: string) => `__rueState.get("${name}")`)
     }
 
     #prepareObjectProperty(line: string, knownNames: string[]): string {
@@ -299,6 +331,7 @@ export class RueFile {
             value[0] == "[" ||
             value[0] == "{" ||
             value.includes("=>") ||
+            (value.includes(".") && value.includes("(")) ||
             value.startsWith("new ") ||
             !Number.isNaN(Number(value)) ||
             ["true", "false", "null", "undefined"].includes(value) ||

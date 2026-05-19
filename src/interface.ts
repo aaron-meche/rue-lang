@@ -27,6 +27,20 @@ declare global {
 
 let stateManager: Record<string, StateRenderer> = {}
 
+export function getStateRenderers(): Record<string, string> {
+    let renderers: Record<string, string> = {}
+
+    Object.keys(stateManager).forEach(id => {
+        renderers[id] = stateManager[id].toString()
+    })
+
+    return renderers
+}
+
+export function resetStateRenderers(): void {
+    stateManager = {}
+}
+
 const attributeKeys = new Set([
     "id",
     "class",
