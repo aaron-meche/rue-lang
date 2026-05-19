@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document</title>
+<style>
+.hero-shell{
+	background: radial-gradient(circle at 18% 16%, rgba(25, 198, 167, 0.24), transparent 30rem), radial-gradient(circle at 84% 12%, rgba(255, 107, 74, 0.20), transparent 28rem), linear-gradient(180deg, #111315 0%, #181b1f 100%);
+}
+.hero-shell::selection{
+	background: var(--accent);
+	color: var(--ink);
+}
+.section-title{
+	max-width: 720px;
+}
+.code-window{
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.code-window-line{
+	white-space: pre-wrap;
+}
+.pill-row{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
+.feature-card{
+	border: solid 1px var(--line);
+	background: var(--surface);
+	box-shadow: 0 24px 70px rgba(17, 19, 21, 0.07);
+}
+.feature-card:hover{
+	transform: translateY(-2px);
+	box-shadow: 0 28px 84px rgba(17, 19, 21, 0.10);
+}
+:root{
+	--ink: #111315;
+	--paper: #f6f7f9;
+	--surface: #ffffff;
+	--line: rgba(17, 19, 21, 0.12);
+	--muted: rgba(17, 19, 21, 0.68);
+	--accent: #19c6a7;
+	--accent-warm: #ff6b4a;
+	--accent-gold: #f4b942;
+}
+*{
+	box-sizing: border-box;
+}
+html{
+	scroll-behavior: smooth;
+}
+body{
+	margin: 0;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+a{
+	color: inherit;
+	text-decoration: none;
+}
+button{
+	border: none;
+	font: inherit;
+}
+.site-nav{
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	backdrop-filter: blur(18px);
+	background: rgba(246, 247, 249, 0.86);
+	border-bottom: solid 1px var(--line);
+}
+.site-nav a{
+	transition: color 120ms, background 120ms;
+}
+.site-nav a:hover{
+	color: var(--accent-warm);
+}
+.nav-link{
+	padding: 0.7rem 0.85rem;
+	border-radius: 0.45rem;
+	color: var(--muted);
+	font-size: 0.88rem;
+	font-weight: 650;
+}
+.nav-link:hover{
+	background: rgba(17, 19, 21, 0.055);
+}
+.github-link{
+	background: var(--ink);
+	color: white;
+}
+.github-link:hover{
+	background: #24282b;
+	color: white;
+}
+.site-footer{
+	border-top: solid 1px var(--line);
+}
+</style>
+</head>
+<body>
+<div class="site-nav"><div style="max-width:1180px;margin:0 auto;padding:0.9rem 1.4rem;display:grid;grid-template-columns:auto auto;align-items:center;gap:1rem;"><a href="/"><div style="display:flex;align-items:center;gap:0.75rem;font-weight:850;letter-spacing:-0.02em;"><div style="width:2.2rem;height:2.2rem;border-radius:0.45rem;background:linear-gradient(135deg, var(--accent), var(--accent-warm) 58%, var(--accent-gold));box-shadow:0 12px 30px rgb(25 198 167 / 25%);"></div><div style="font-size:1.08rem;">Rue</div></div></a><div style="display:flex;align-items:center;justify-content:end;gap:0.2rem;flex-wrap:wrap;"><a href="#syntax" class="nav-link">Syntax</a><a href="#runtime" class="nav-link">Runtime</a><a href="#roadmap" class="nav-link">Roadmap</a><a href="https://github.com/aaron-meche/rue-lang" class="nav-link github-link" target="_blank" rel="noopener">GitHub</a></div></div></div><div><div style="color:white;" class="hero-shell"><div style="max-width:1180px;min-height:82vh;margin:0 auto;padding:7.2rem 1.4rem 4.8rem;display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:3.4rem;align-items:center;"><div style="display:grid;gap:1.4rem;align-content:center;"><div style="font-size:clamp(4rem, 11vw, 9rem);line-height:0.88;font-weight:950;letter-spacing:-0.07em;">Rue</div><div style="max-width:650px;color:rgb(255 255 255 / 82%);font-size:clamp(1rem, 3vw, 2rem);line-height:1.22;font-weight:520;">A compact language experiment for building web interfaces from readable Rue files</div><div style="max-width:620px;color:rgb(255 255 255 / 64%);font-size:1.05rem;line-height:1.75;">Rue combines CSS-like styling JavaScript-powered components live state and file-based routing into one small compiler</div><div style="margin-top:0.6rem;" class="pill-row"><div style="border:solid 1px rgb(255 255 255 / 16%);background:rgb(255 255 255 / 8%);color:rgb(255 255 255 / 86%);border-radius:100vh;padding:0.58rem 0.82rem;font-size:0.86rem;font-weight:720;">Rue files</div><div style="border:solid 1px rgb(255 255 255 / 16%);background:rgb(255 255 255 / 8%);color:rgb(255 255 255 / 86%);border-radius:100vh;padding:0.58rem 0.82rem;font-size:0.86rem;font-weight:720;">UIElement runtime</div><div style="border:solid 1px rgb(255 255 255 / 16%);background:rgb(255 255 255 / 8%);color:rgb(255 255 255 / 86%);border-radius:100vh;padding:0.58rem 0.82rem;font-size:0.86rem;font-weight:720;">Live state</div><div style="border:solid 1px rgb(255 255 255 / 16%);background:rgb(255 255 255 / 8%);color:rgb(255 255 255 / 86%);border-radius:100vh;padding:0.58rem 0.82rem;font-size:0.86rem;font-weight:720;">File routes</div></div></div><div style="border:solid 1px rgb(255 255 255 / 13%);background:rgb(8 10 12 / 78%);border-radius:0.8rem;overflow:hidden;box-shadow:0 38px 100px rgb(0 0 0 / 42%);" class="code-window"><div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.86rem 1rem;border-bottom:solid 1px rgb(255 255 255 / 10%);color:rgb(255 255 255 / 68%);font-size:0.78rem;"><div style="display:flex;gap:0.42rem;"><div style="width:0.68rem;height:0.68rem;border-radius:100vh;background:#ff6b4a;"></div><div style="width:0.68rem;height:0.68rem;border-radius:100vh;background:#f4b942;"></div><div style="width:0.68rem;height:0.68rem;border-radius:100vh;background:#19c6a7;"></div></div><div>dev web main rue</div></div><div style="padding:1.25rem;display:grid;gap:0.45rem;font-size:0.92rem;line-height:1.58;"><div style="color:#8be9fd;" class="code-window-line">component Hero() {</div><div style="color:#f8f8f2;" class="code-window-line">    display: grid</div><div style="color:#f8f8f2;" class="code-window-line">    gap: 1rem</div><div style="color:#f8f8f2;" class="code-window-line">    content: [</div><div style="color:#f1fa8c;" class="code-window-line">        new Wrapper("Build without HTML")</div><div style="color:#50fa7b;" class="code-window-line">        CounterButton()</div><div style="color:#f8f8f2;" class="code-window-line">    ]</div><div style="color:#8be9fd;" class="code-window-line">}</div></div></div></div></div><div id="syntax"><div style="max-width:1180px;margin:0 auto;padding:6rem 1.4rem;display:grid;gap:2.6rem;"><div style="display:grid;gap:0.8rem;" class="section-title"><div style="font-size:clamp(2rem, 5vw, 4rem);line-height:1;font-weight:900;letter-spacing:-0.055em;">Designed around the file you actually edit</div><div style="color:var(--muted);font-size:1.05rem;line-height:1.75;">Rue keeps page structure component config and styling close together while the current compiler favors small readable blocks over framework ceremony</div></div><div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:1rem;"><div style="border-radius:0.7rem;padding:1.35rem;min-height:13rem;transition:transform 140ms, box-shadow 140ms;" class="feature-card"><div style="font-size:1.08rem;font-weight:850;letter-spacing:-0.02em;">CSS-like config</div><div style="margin-top:0.75rem;color:var(--muted);font-size:0.96rem;line-height:1.65;">Write UI style values without quoting every CSS token and compile hyphenated CSS properties into runtime styles</div></div><div style="border-radius:0.7rem;padding:1.35rem;min-height:13rem;transition:transform 140ms, box-shadow 140ms;" class="feature-card"><div style="font-size:1.08rem;font-weight:850;letter-spacing:-0.02em;">Component syntax</div><div style="margin-top:0.75rem;color:var(--muted);font-size:0.96rem;line-height:1.65;">A component body is the UIElement config and calling the component returns a real UIElement instance</div></div><div style="border-radius:0.7rem;padding:1.35rem;min-height:13rem;transition:transform 140ms, box-shadow 140ms;" class="feature-card"><div style="font-size:1.08rem;font-weight:850;letter-spacing:-0.02em;">Ordered Interface</div><div style="margin-top:0.75rem;color:var(--muted);font-size:0.96rem;line-height:1.65;">The Interface block is the page output array and elements render in the order they are written</div></div></div></div></div><div style="background:#111315;color:white;" id="runtime"><div style="max-width:1180px;margin:0 auto;padding:6.2rem 1.4rem;display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:2rem;align-items:center;"><div style="display:grid;gap:0.8rem;" class="section-title"><div style="font-size:clamp(2rem, 5vw, 4rem);line-height:1;font-weight:900;letter-spacing:-0.055em;">A compiler plus a tiny UI runtime</div><div style="color:rgb(255 255 255 / 68%);font-size:1.05rem;line-height:1.75;">Rue currently turns Interface output into HTML using UIElement classes while live state can update rendered content without a larger app framework</div></div><div style="border:solid 1px rgb(255 255 255 / 12%);background:rgb(255 255 255 / 7%);border-radius:0.8rem;padding:1.2rem;display:grid;gap:1rem;"><div style="color:rgb(255 255 255 / 62%);font-size:0.82rem;font-weight:780;text-transform:uppercase;letter-spacing:0.08em;">Live state demo</div><div style="border-radius:0.65rem;background:rgb(255 255 255 / 8%);padding:1.3rem;display:grid;gap:0.9rem;"><div style="color:rgb(255 255 255 / 62%);font-size:0.92rem;">Counter value</div><div style="font-size:4rem;line-height:1;font-weight:900;" live_state="state_rv6z4cfkj">4</div><button style="width:fit-content;background:var(--accent);color:#07110f;border-radius:0.45rem;padding:0.78rem 1rem;font-weight:800;cursor:pointer;" onclick="(() =&gt; {
+__rueState.set(&quot;count&quot;, __rueState.get(&quot;count&quot;) + 1)
+})(this);">Increment count</button></div></div></div></div><div id="roadmap"><div style="max-width:1180px;margin:0 auto;padding:6rem 1.4rem 7rem;display:grid;gap:2.4rem;"><div style="display:grid;gap:0.8rem;" class="section-title"><div style="font-size:clamp(2rem, 5vw, 4rem);line-height:1;font-weight:900;letter-spacing:-0.055em;">Built to become a real UI package</div><div style="color:var(--muted);font-size:1.05rem;line-height:1.75;">This page is a first homepage draft and the next useful work is turning the language runtime router docs and editor support into one coherent developer experience</div></div><div style="display:grid;gap:0.8rem;"><div style="display:grid;grid-template-columns:auto minmax(0, 1fr);gap:1rem;align-items:start;border-top:solid 1px var(--line);padding:1.1rem 0;"><div style="width:2rem;height:2rem;border-radius:100vh;background:var(--ink);color:white;display:flex;align-items:center;justify-content:center;font-weight:850;">1</div><div style="display:grid;gap:0.35rem;"><div style="font-weight:850;font-size:1.04rem;">Stabilize component parsing</div><div style="color:var(--muted);line-height:1.6;">Keep the component body simple predictable and easy to debug</div></div></div><div style="display:grid;grid-template-columns:auto minmax(0, 1fr);gap:1rem;align-items:start;border-top:solid 1px var(--line);padding:1.1rem 0;"><div style="width:2rem;height:2rem;border-radius:100vh;background:var(--ink);color:white;display:flex;align-items:center;justify-content:center;font-weight:850;">2</div><div style="display:grid;gap:0.35rem;"><div style="font-weight:850;font-size:1.04rem;">Expand runtime primitives</div><div style="color:var(--muted);line-height:1.6;">Promote common layout image button and text patterns into clear Rue UI primitives</div></div></div><div style="display:grid;grid-template-columns:auto minmax(0, 1fr);gap:1rem;align-items:start;border-top:solid 1px var(--line);padding:1.1rem 0;"><div style="width:2rem;height:2rem;border-radius:100vh;background:var(--ink);color:white;display:flex;align-items:center;justify-content:center;font-weight:850;">3</div><div style="display:grid;gap:0.35rem;"><div style="font-weight:850;font-size:1.04rem;">Improve editor feedback</div><div style="color:var(--muted);line-height:1.6;">Use compiler diagnostics to surface syntax errors directly inside Rue files</div></div></div></div></div></div></div><div class="site-footer"><div style="max-width:1180px;margin:0 auto;padding:2.2rem 1.4rem;display:grid;grid-template-columns:minmax(0, 1fr) auto;gap:1rem;align-items:center;"><div style="color:var(--muted);font-size:0.92rem;line-height:1.6;">Rue is an experimental language and compiler for building UI directly from .rue files.</div><div style="color:var(--muted);font-size:0.92rem;font-weight:650;">Created by Aaron Meche</div></div></div>
+<script>
+window.__rueStateData = {"count":4};
+window.__rueRenderers = {
+"state_rv6z4cfkj": () => {
+return __rueState.get("count")
+}
+};
+window.__rueToHTML = input => {
+    if (input === null || input === undefined || input === false) return "";
+    if (Array.isArray(input)) return input.map(window.__rueToHTML).join("");
+    if (input && typeof input.getHTML == "function") return input.getHTML();
+    return String(input);
+};
+window.__rueRenderState = () => {
+    document.querySelectorAll("[live_state]").forEach(elem => {
+        let renderer = window.__rueRenderers[elem.getAttribute("live_state")];
+        if (typeof renderer == "function") elem.innerHTML = window.__rueToHTML(renderer());
+    });
+};
+window.__rueState = {
+    get: name => window.__rueStateData[name],
+    set: (name, value) => {
+        window.__rueStateData[name] = value;
+        window.__rueRenderState();
+        return value;
+    },
+    update: callback => {
+        let next = callback(window.__rueStateData);
+        if (next) window.__rueStateData = next;
+        window.__rueRenderState();
+    }
+};
+var __rueState = window.__rueState;
+</script>
+</body>
+</html>

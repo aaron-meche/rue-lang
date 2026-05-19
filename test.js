@@ -7,4 +7,4 @@
 
 import { RueRouter } from "rue-lang"
 
-new RueRouter("./web", "./out")
+new RueRouter("./dev/web", "./dev/out")

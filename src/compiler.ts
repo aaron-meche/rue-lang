@@ -240,7 +240,7 @@ export class RueFile {
         this.#currLineIndex = lines.length - 1
         this.#throwError("raw js", "unclosed raw JavaScript block")
     }
-
+ 
     #addFunction(lines: string[]): void {
         let startIndex = this.#currLineIndex
         let startLine = stripLineComment(lines[startIndex]).trim()
@@ -252,10 +252,11 @@ export class RueFile {
 
         let localNames = signature.params.map(param => param.split("=")[0].trim())
         let knownNames = [...localNames, ...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime), "__rueState"]
-        let body = this.#captureBlock(lines, startIndex, 2, knownNames)
+        let isComponent = firstWord == "component"
+        let body = this.#captureBlock(lines, startIndex, isComponent ? 1 : 2, knownNames)
 
-        if (firstWord == "component" && body[0] && !body[0].startsWith("return "))
-            body[0] = "return " + body[0]
+        if (isComponent)
+            body = ["return new UIElement({", ...body, "})"]
 
         try {
             let context = this.#buildRunnableContext()
