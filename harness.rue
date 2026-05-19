@@ -1,75 +1,105 @@
 //
 // harness.rue
 //
-// Sandbox syntax environment for
-// rue lang's expansion into ai
-// harness creation and usage.
+// Concept draft for embedding Rueter AI harnesses into Rue.
+//
+// Implementation target:
+// - ai ModelName { ... } compiles to a RueterModel-backed RueAIModel wrapper.
+// - harness Name(input) { ... } compiles to an async function.
+// - ModelName(value) calls await ModelName.prompt(value).
+// - each values with ModelName runs that model once per array item.
+// - returns controls response parsing after RueterModel.prompt() returns text.
 //
 
-@model Breakdown {
+ai Breakdown {
+    provider: openai
+    apiKey: env("OPENAI_API_KEY")
+    model: "gpt-5-mini"
     temperature: 0.2
-    max-tokens: 1024
-    system-prompt: "You are going to recieve a question as input, and your job is to breakdown this question into multiple smaller steps. Your response must be an array of strings, with each string being a smaller subquestion"
-    response-type: string[]
+    maxTokens: 1024
+    returns: string[]
+    system: `
+        Break the user's question into the smallest useful set of subquestions.
+        Return only a JSON array of strings.
+    `
 }
 
-@model SubQuestion {
+ai SubQuestion {
+    provider: openai
+    apiKey: env("OPENAI_API_KEY")
+    model: "gpt-5-mini"
     temperature: 0.1
-    max-tokens: 256
-    system-prompt: "You are a subquestion solver, tasked with solving smaller subquestions extracted from one larger question. It is imperative that you answer your question correctly as to not tamper with the final solution."
-    response-type: string
+    maxTokens: 512
+    returns: string
+    system: `
+        Answer one subquestion accurately and concisely.
+        Return only the answer text.
+    `
 }
 
-@model Summary {
-    temperature: 0.3
-    max-tokens: 256
-    system-prompt: "You are a professional question solver. You are going to receive an array of multiple solutions to smaller questions--all extracted from one larger question. It is your job to respond to the original question properly."
-    response-type: string
+ai Summary {
+    provider: openai
+    apiKey: env("OPENAI_API_KEY")
+    model: "gpt-5-mini"
+    temperature: 0.25
+    maxTokens: 1024
+    returns: string
+    system: `
+        Answer the original question using the solved subquestions.
+        Return a direct, complete answer.
+    `
 }
 
-// defining a new AI Harness
-@harness QuestionSolver {
-    // prompt passes in prompted string to Breakdown model
-    prompt: Breakdown
-    // Breakdown model response-type is an array of strings
-    // iterate takes in an array and iterates through every 
-    // string, repeatedly prompting SubQuestion
-    iterate: SubQuestion
-    // iterate returns an array of strings, correspoding
-    // to the response to each SubQuestion
-    prompt: Summary
-    // return will return the most recent response, 
-    // in this case, the response from Summary
-    return
+harness QuestionSolver(question) {
+    string[] questions = Breakdown(question)
+
+    string[] answers = each questions with SubQuestion
+
+    string final = Summary({
+        question
+        answers
+    })
+
+    return final
 }
 
 @state inputVal = ""
 @state promptRes = ""
+@state promptLoading = false
+@state promptError = ""
 
-Interface {
-    new Input({
-        placeholder: "Enter your question here."
-        bind-value: @inputVal
-    })
-    new Button("->", {
-        onclick: () => {
-            @interact QuestionSolver {
-                prompt: @inputVal
-                handle: (res) => {
-                    @promptRes = res
+component QuestionHarnessDemo() {
+    content: [
+        new Input({
+            placeholder: "Ask a question"
+            bind-value: @inputVal
+        })
+
+        new Button("Ask", {
+            onclick: async () => {
+                @promptLoading = true
+                @promptError = ""
+
+                try {
+                    @promptRes = await QuestionSolver(@inputVal)
+                } catch (error) {
+                    @promptError = error instanceof Error ? error.message : String(error)
                 }
+
+                @promptLoading = false
             }
-        }
-    })
-    new UIElement({
-        content: () => {
-            return @promptRes
-        }
-    })
+        })
+
+        new UIElement({
+            content: () => {
+                if (@promptLoading) return "Thinking..."
+                if (@promptError) return @promptError
+                return @promptRes
+            }
+        })
+    ]
 }
 
-
-
-
-
-
+Interface {
+    QuestionHarnessDemo()
+}

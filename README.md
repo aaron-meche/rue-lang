@@ -1,248 +1,331 @@
-# Rue Stylesheet Language
+# Rue
 
-Rue is a small stylesheet language for writing CSS with nested selectors, compile-time variables, CSS custom properties, and simple helper functions.
+Rue is an experimental TypeScript compiler and UI runtime for building web interfaces from `.rue` files.
+
+Rue started as a small stylesheet language for nested CSS. It is currently evolving into a compact UI language that combines CSS-like styling, JavaScript-powered components, live state, and file-based routing without writing HTML syntax directly.
 
 Created by Aaron Meche.
 
-## Installation
+## Status
+
+Rue is under active development. The syntax and public API may change while the project moves from a stylesheet compiler toward a fuller Rue UI workflow.
+
+Current focus:
+
+- `.rue` files as the primary UI authoring format.
+- Components that compile into `UIElement` runtime objects.
+- Ordered `Interface` blocks for page output.
+- CSS-like style blocks and CSS custom properties.
+- Lightweight live state with `@state`.
+- Static route generation from a `web/` directory into an `out/` directory.
+
+## Install
 
 ```bash
 npm install rue-lang
 ```
 
-## Basic Usage
+For local development:
 
-```js
-import { RueFile } from "rue-lang";
-
-const file = new RueFile("./styles.rue");
-
-console.log(file.getCSS());
-file.output("./dist/styles.css");
+```bash
+npm install
+npm run build
+node test.js
 ```
 
-You can also compile a string directly:
+The local smoke test builds routes from `dev/web` into `dev/out`.
+
+## Basic Route Build
 
 ```js
-import { RueFile } from "rue-lang";
+import { RueRouter } from "rue-lang"
 
-const file = new RueFile();
-
-file.feed(`
-body{
-    margin: 0;
-}
-`);
-
-console.log(file.getCSS());
+new RueRouter("./web", "./out")
 ```
 
-## Rue Syntax
+Route convention:
 
-### Nested Selectors
+```text
+web/main.rue          -> /
+web/about/main.rue    -> /about
+web/layout.rue        -> shared layout
+out/index.html        -> generated home page
+out/about/index.html  -> generated about page
+```
 
-Rue lets you nest selectors inside other selectors.
+`layout.rue` can wrap child page output by placing `Interface` inside its own `Interface` block.
+
+## Rue File Example
 
 ```rue
-.card{
-    padding: 1rem;
+def accent: #19c6a7
 
-    .title{
-        font-weight: 700;
+.counter-card {
+    padding: 1rem
+    border: solid 1px rgba(0, 0, 0, 0.12)
+}
+
+@state count = 0
+
+component Counter() {
+    className: counter-card
+    display: grid
+    gap: 0.8rem
+    content: [
+        new Wrapper("Counter")
+
+        new UIElement({
+            font-size: 2rem
+            font-weight: 800
+            content: () => {
+                return @count
+            }
+        })
+
+        new Button("Increment", {
+            background: var(--accent)
+            padding: 0.7rem 1rem
+            cursor: pointer
+            onclick: () => {
+                @count++
+            }
+        })
+    ]
+}
+
+Interface {
+    Counter()
+}
+```
+
+## Core Syntax
+
+### Styles
+
+Rue supports CSS-like blocks with nested selector behavior and optional semicolons.
+
+```rue
+.card {
+    padding: 1rem
+
+    :hover {
+        background: #f5f5f5
     }
 }
 ```
 
-Compiles to:
+### CSS Variables
 
-```css
-:root{
-	
-}
-.card{
-	padding: 1rem;
-}
-.card .title{
-	font-weight: 700;
-}
-```
-
-Inline style blocks are supported too:
+Use `def` to emit CSS custom properties into `:root`.
 
 ```rue
-.card { padding: 1rem; .title { font-weight: 700; } }
+def ink: #111315
+def accent: #19c6a7
 ```
 
-### CSS Custom Properties
+### Components
 
-Use `def` when you want to create a real CSS custom property in `:root`.
+Components are functions whose bodies become `UIElement` config objects.
 
 ```rue
-def bg: black;
-def accent: royalblue;
-
-body{
-    background: var(--bg);
-    color: var(--accent);
+component Heading(text) {
+    font-size: 2.4rem
+    font-weight: 800
+    content: text
 }
 ```
 
-That compiles to CSS like:
-
-```css
-:root{
-	--bg: black;
-	--accent: royalblue;
-}
-```
-
-### Rue Variables
-
-Use `_name_:` when you want a Rue-only compile-time variable. Rue variables do not appear in the final CSS by themselves. They are replaced before CSS is output.
-
-```rue
-_brand_: royalblue
-_space_: 1rem
-
-button{
-    color: _brand_;
-    padding: _space_;
-}
-```
-
-Compiles to:
-
-```css
-button{
-	color: royalblue;
-	padding: 1rem;
-}
-```
-
-### `def` vs `_var_`
-
-They solve different problems:
-
-`def name: value;` creates a CSS variable:
-
-```rue
-def brand: royalblue;
-
-button{
-    color: var(--brand);
-}
-```
-
-`_name_: value` creates a Rue variable:
-
-```rue
-_brand_: royalblue
-
-button{
-    color: _brand_;
-}
-```
-
-Use `def` when you want the value available to browser CSS at runtime through `var(--name)`. Use `_name_` when you only want Rue to substitute the value while compiling.
-
-You can also use a Rue variable inside a `def`:
-
-```rue
-_brand_: royalblue
-
-def brand: _brand_;
-```
-
-This lets Rue decide the value while still emitting a CSS custom property.
-
-### Functions
-
-Rue supports simple helper functions inside `.rue` files.
-
-```rue
-func doublePx(value) {
-    return value * 2 + "px"
-}
-
-.box{
-    width: doublePx(10);
-}
-```
-
-Function bodies are run as JavaScript, so only use trusted Rue files.
-
-## Svelte Preprocessor
-
-Rue includes a Svelte style preprocessor.
+The compiler treats that like a function returning:
 
 ```js
-import { ruePreprocess } from "rue-lang";
+new UIElement({
+    "font-size": "...",
+    content: text
+})
+```
+
+Rue style keys are written in CSS form, such as `font-size`, and are converted into runtime output.
+
+### Interface
+
+Every page-oriented Rue file uses an `Interface` block as its ordered output.
+
+```rue
+Interface {
+    Heading("Rue")
+    new Wrapper("Build UI from Rue files.")
+}
+```
+
+The interface body is evaluated as an array of runtime UI content.
+
+### Live State
+
+Use `@state` to define live values and `@name` to reference them inside Rue expressions.
+
+```rue
+@state count = 4
+
+content: () => {
+    return @count
+}
+
+onclick: () => {
+    @count++
+}
+```
+
+The compiler rewrites state references into generated browser-side state updates.
+
+### Raw JavaScript
+
+A top-level raw JavaScript block can be inserted into the generated HTML.
+
+```rue
+{
+    console.log("Loaded from Rue")
+}
+```
+
+Use this as an escape hatch for small browser scripts.
+
+## Runtime Classes
+
+Rue exports UI runtime primitives from `rue-lang` and `rue-lang/interface`.
+
+Common classes:
+
+- `UIElement`
+- `Wrapper`
+- `Button`
+- `Image`
+- `Rectangle`
+- `HStack`
+- `VStack`
+- `StateStore`
+
+Example:
+
+```js
+import { UIElement, Button, Wrapper } from "rue-lang"
+```
+
+`UIElement` config keys are interpreted as protocols, HTML attributes, or inline styles.
+
+Common protocol keys:
+
+- `content`
+- `onclick`
+- `onhover`
+- `attrs`
+- `aria`
+- `data`
+- `tag`
+- `src`
+- `self`
+
+Style keys can use underscores in JavaScript objects, such as `font_size`, and Rue/runtime output converts them to CSS form.
+
+## Programmatic Compiler Usage
+
+```js
+import { RueFile } from "rue-lang"
+
+const file = new RueFile("./web/main.rue")
+
+console.log(file.getCSS())
+console.log(file.getHTML())
+console.log(file.getErrors())
+```
+
+Compile from a string:
+
+```js
+import { RueFile } from "rue-lang"
+
+const file = new RueFile()
+
+file.feed(`
+body {
+    margin: 0
+}
+
+Interface {
+    new Wrapper("Hello from Rue")
+}
+`)
+
+console.log(file.getHTML())
+```
+
+## Vite And Svelte CSS Integration
+
+Rue still includes the earlier stylesheet-oriented integrations.
+
+Vite:
+
+```js
+import ruePlugin from "rue-lang"
 
 export default {
-    preprocess: [
-        ruePreprocess()
-    ]
-};
+    plugins: [ruePlugin()]
+}
+```
+
+Svelte style preprocessing:
+
+```js
+import { ruePreprocess } from "rue-lang"
+
+export default {
+    preprocess: [ruePreprocess()]
+}
 ```
 
 ```svelte
 <style lang="rue">
-.card{
-    padding: 1rem;
-
-    .title{
-        font-weight: 700;
-    }
+.card {
+    padding: 1rem
 }
 </style>
 ```
 
-## Vite Plugin
+These integrations currently compile Rue style output, not full static routes.
 
-Rue also includes a Vite plugin for importing `.rue` files.
+## Project Structure
 
-```js
-import ruePlugin from "rue-lang";
-
-export default {
-    plugins: [
-        ruePlugin()
-    ]
-};
-```
-
-```js
-import "./styles.rue";
-```
-
-If you prefer an explicit subpath import, `rue-lang/vite-plugin` still works.
-
-## Error Handling
-
-The compiler is designed to keep going when it finds malformed Rue input. It records recoverable errors and still returns the CSS it was able to compile.
-
-```js
-const file = new RueFile("./styles.rue");
-
-console.log(file.getCSS());
-console.log(file.getErrors());
+```text
+src/compiler.ts       RueFile parser/compiler
+src/interface.ts      UI runtime classes
+src/router.ts         Static route builder
+src/vite-plugin.ts    Vite stylesheet plugin
+dev/web/              Local Rue showcase source
+dev/out/              Generated local HTML output
+rue.tmLanguage.json   VS Code TextMate grammar
+test.js               Local route-generation smoke test
 ```
 
 ## Development
 
-Rue is written in TypeScript and compiled to `dist/` for npm publishing.
-
 ```bash
 npm run build
-npm test
+node test.js
 ```
 
-Run the local demo site:
+Useful commands:
 
-```bash
-npm run demo:dev
-```
+- `npm run build`: compile TypeScript.
+- `node test.js`: generate local HTML routes from `dev/web` to `dev/out`.
+- `npm test`: build and run the package test entry.
 
-## Project Goal
+## Known Limits
 
-Rue is intended for personal projects where nested styles, simple variables, and small helper functions make CSS faster to write. The compiler currently stays intentionally small and conservative.
+- Rue is experimental and changing quickly.
+- General import syntax is intentionally not part of the current workflow.
+- The old object-shaped `Interface { head, body, style }` model is removed.
+- Inline single-line CSS blocks are not currently supported.
+- The public package metadata may lag behind the active Rue UI direction.
+
+## License
+
+MIT
