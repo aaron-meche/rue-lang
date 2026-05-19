@@ -11,7 +11,9 @@ import {
     extractFunctionCalls, mapID,
     countRueScopeDepth,
     buildRunnableContext, resolveFunctionCalls,
-    type RueFunctionSignature
+    buildStateScript,
+    type RueFunctionSignature,
+    type RueStateMap
 } from './helpers.js';
 import * as RueUIRuntime from './interface.js';
 import { UIElement } from './interface.js';
@@ -21,9 +23,8 @@ import { UIElement } from './interface.js';
 export type RueCSSMap = Record<string, string[]>
 export type RueCallable = (...params: unknown[]) => unknown
 export type RueFunctionMap = Record<string, RueFunctionDefinition>
-export type RueStateMap = Record<string, unknown>
 export type RueInterface = unknown[]
-export type { RueFunctionSignature } from './helpers.js';
+export type { RueFunctionSignature, RueStateMap } from './helpers.js';
 export interface RueFunctionDefinition {
     name: string
     params: string[]
@@ -82,6 +83,7 @@ export class RueFile {
         this.#interface = []
         this.#compiledCSS = []
         this.#errors = []
+        RueUIRuntime.resetStateRenderers()
     }
 
     #parse(): void {
@@ -186,6 +188,7 @@ export class RueFile {
             `</head>`,
             `<body>`,
             `${htmlBodyContent.join("\n")}`,
+            `${this.#buildStateScript()}`,
             `</body>`,
             `</html>`,
         ]
@@ -193,12 +196,20 @@ export class RueFile {
 
     #newStateVariable(line: string): void {
         if (!line.includes("=")) { this.#throwError("@state var", "missing '=' sign"); return }
-        let splitByEqual = line.split("=")
-        let variableName = splitByEqual[0].replace("@state", "").trim()
-        let varvalString = splitByEqual[1].trim()
-        let valvalNumber = Number(varvalString)
-        let varvalFinal = Number.isFinite(valvalNumber) ? valvalNumber : varvalString
-        this.#stateMap[variableName] = varvalFinal
+        let equalIndex = line.indexOf("=")
+        let variableName = line.slice(0, equalIndex).replace("@state", "").trim()
+        let valueText = line.slice(equalIndex + 1).trim()
+
+        try {
+            this.#stateMap[variableName] = new Function("return (" + valueText + ")")()
+        }
+        catch {
+            this.#stateMap[variableName] = valueText
+        }
+    }
+
+    #buildStateScript(): string {
+        return buildStateScript(this.#stateMap, RueUIRuntime.getStateRenderers())
     }
 
     #addFunction(lines: string[]): void {
@@ -308,7 +319,14 @@ export class RueFile {
     }
 
     #resolveStateReferences(line: string): string {
-        return line.replace(/@([A-Za-z_$][\w$]*)/g, (_, name: string) => `__rueState.get("${name}")`)
+        return line
+            .replace(/@([A-Za-z_$][\w$]*)\s*\+\+/g, (_, name: string) => {
+                return `__rueState.set("${name}", __rueState.get("${name}") + 1)`
+            })
+            .replace(/@([A-Za-z_$][\w$]*)\s*--/g, (_, name: string) => {
+                return `__rueState.set("${name}", __rueState.get("${name}") - 1)`
+            })
+            .replace(/@([A-Za-z_$][\w$]*)/g, (_, name: string) => `__rueState.get("${name}")`)
     }
 
     #prepareObjectProperty(line: string, knownNames: string[]): string {

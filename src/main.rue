@@ -140,6 +140,11 @@ component LiveCounter() {
                     return "Live Counter: " + @count
                 }
             })
+            new Button("+", {
+                onclick: () => {
+                    @count++
+                }
+            })
         ]
     })
 }
@@ -149,5 +154,5 @@ Interface {
     NavigationBar()
     NameHeroSection()
     FeaturedProjects()
-    // LiveCounter()
+    LiveCounter()
 }

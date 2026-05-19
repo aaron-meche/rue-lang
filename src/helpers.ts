@@ -20,6 +20,9 @@ export interface RueRunnableFunction {
 
 export type RueRunnableFunctionMap = Record<string, RueRunnableFunction>
 
+export type RueStateMap = Record<string, unknown>
+export type RueStateRendererMap = Record<string, string>
+
 // Read File Text Content
 export function readFileText(filePath: string): string { 
     try {
@@ -37,6 +40,47 @@ export function writeFileText(filePath: string, fileContent: string): void {
     const dir = path.dirname(filePath)
     if (dir && dir != ".") fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(filePath, fileContent)
+}
+
+export function buildStateScript(stateMap: RueStateMap, renderers: RueStateRendererMap): string {
+    if (!Object.keys(stateMap).length && !Object.keys(renderers).length) return ""
+
+    let rendererEntries = Object.keys(renderers).map(id => {
+        return JSON.stringify(id) + ": " + renderers[id]
+    }).join(",\n")
+
+    return `<script>
+window.__rueStateData = ${JSON.stringify(stateMap)};
+window.__rueRenderers = {
+${rendererEntries}
+};
+window.__rueToHTML = input => {
+    if (input === null || input === undefined || input === false) return "";
+    if (Array.isArray(input)) return input.map(window.__rueToHTML).join("");
+    if (input && typeof input.getHTML == "function") return input.getHTML();
+    return String(input);
+};
+window.__rueRenderState = () => {
+    document.querySelectorAll("[live_state]").forEach(elem => {
+        let renderer = window.__rueRenderers[elem.getAttribute("live_state")];
+        if (typeof renderer == "function") elem.innerHTML = window.__rueToHTML(renderer());
+    });
+};
+window.__rueState = {
+    get: name => window.__rueStateData[name],
+    set: (name, value) => {
+        window.__rueStateData[name] = value;
+        window.__rueRenderState();
+        return value;
+    },
+    update: callback => {
+        let next = callback(window.__rueStateData);
+        if (next) window.__rueStateData = next;
+        window.__rueRenderState();
+    }
+};
+var __rueState = window.__rueState;
+</script>`
 }
 
 export function stripLineComment(line: string): string {
