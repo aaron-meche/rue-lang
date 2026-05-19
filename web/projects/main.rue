@@ -1,0 +1,11 @@
+//
+// Projects Page
+//
+// Rue Programming Language
+//
+
+Interface {
+    new UIWrapper({
+        content: "This is the Projects page"
+    })
+}

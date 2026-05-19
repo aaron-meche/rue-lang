@@ -1,0 +1,11 @@
+//
+// Resume Page
+//
+// Rue Programming Language
+//
+
+Interface {
+    new UIWrapper({
+        content: "This is the Resume page"
+    })
+}

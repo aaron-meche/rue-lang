@@ -1,0 +1,11 @@
+//
+// Education Page
+//
+// Rue Programming Language
+//
+
+Interface {
+    new UIWrapper({
+        content: "This is the Education page"
+    })
+}
