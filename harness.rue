@@ -1,0 +1,75 @@
+//
+// harness.rue
+//
+// Sandbox syntax environment for
+// rue lang's expansion into ai
+// harness creation and usage.
+//
+
+@model Breakdown {
+    temperature: 0.2
+    max-tokens: 1024
+    system-prompt: "You are going to recieve a question as input, and your job is to breakdown this question into multiple smaller steps. Your response must be an array of strings, with each string being a smaller subquestion"
+    response-type: string[]
+}
+
+@model SubQuestion {
+    temperature: 0.1
+    max-tokens: 256
+    system-prompt: "You are a subquestion solver, tasked with solving smaller subquestions extracted from one larger question. It is imperative that you answer your question correctly as to not tamper with the final solution."
+    response-type: string
+}
+
+@model Summary {
+    temperature: 0.3
+    max-tokens: 256
+    system-prompt: "You are a professional question solver. You are going to receive an array of multiple solutions to smaller questions--all extracted from one larger question. It is your job to respond to the original question properly."
+    response-type: string
+}
+
+// defining a new AI Harness
+@harness QuestionSolver {
+    // prompt passes in prompted string to Breakdown model
+    prompt: Breakdown
+    // Breakdown model response-type is an array of strings
+    // iterate takes in an array and iterates through every 
+    // string, repeatedly prompting SubQuestion
+    iterate: SubQuestion
+    // iterate returns an array of strings, correspoding
+    // to the response to each SubQuestion
+    prompt: Summary
+    // return will return the most recent response, 
+    // in this case, the response from Summary
+    return
+}
+
+@state inputVal = ""
+@state promptRes = ""
+
+Interface {
+    new Input({
+        placeholder: "Enter your question here."
+        bind-value: @inputVal
+    })
+    new Button("->", {
+        onclick: () => {
+            @interact QuestionSolver {
+                prompt: @inputVal
+                handle: (res) => {
+                    @promptRes = res
+                }
+            }
+        }
+    })
+    new UIElement({
+        content: () => {
+            return @promptRes
+        }
+    })
+}
+
+
+
+
+
+
