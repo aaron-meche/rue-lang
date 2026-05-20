@@ -1,15 +1,22 @@
 //
-// Rue Showcase Layout
+// Rue Studio Layout
 //
 
-def ink: #111315
-def paper: #f6f7f9
-def surface: #ffffff
-def line: rgba(17, 19, 21, 0.12)
-def muted: rgba(17, 19, 21, 0.68)
-def accent: #19c6a7
-def accent-warm: #ff6b4a
-def accent-gold: #f4b942
+import Navigation from "./components/navigation.rue"
+import Footer from "./components/footer.rue"
+
+def page-bg: #05070d
+def page-bg-soft: #080b12
+def ink: #f7f8ff
+def muted: rgb(229 233 245 / 68%)
+def faint: rgb(229 233 245 / 44%)
+def line: rgb(229 233 245 / 13%)
+def panel: rgb(10 14 24 / 72%)
+def panel-strong: rgb(13 18 31 / 88%)
+def rose: #ff5d66
+def rose-soft: #ff9aa3
+def cyan: #31e6d1
+def gold: #f4bd61
 
 *{
     box-sizing: border-box
@@ -17,13 +24,48 @@ def accent-gold: #f4b942
 
 html{
     scroll-behavior: smooth
+    scroll-padding-top: 6.4rem
+    background: var(--page-bg)
+}
+
+[id]{
+    scroll-margin-top: 6.4rem
 }
 
 body{
     margin: 0
-    background: var(--paper)
+    min-height: 100vh
+    background: radial-gradient(circle at 50% 4%, rgb(255 93 102 / 24%), transparent 28rem), radial-gradient(circle at 16% 18%, rgb(255 93 102 / 11%), transparent 36rem), radial-gradient(circle at 88% 22%, rgb(49 230 209 / 10%), transparent 34rem), radial-gradient(circle at 50% 82%, rgb(244 189 97 / 8%), transparent 38rem), linear-gradient(180deg, #05070d 0%, #080b12 44%, #05060a 100%)
     color: var(--ink)
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+    letter-spacing: 0
+    overflow-x: hidden
+}
+
+body::before{
+    content: ""
+    position: fixed
+    inset: 0
+    z-index: 0
+    pointer-events: none
+    background-image: radial-gradient(circle, rgb(255 255 255 / 68%) 0 1px, transparent 1.8px), radial-gradient(circle, rgb(49 230 209 / 45%) 0 1px, transparent 1.8px), radial-gradient(circle, rgb(255 93 102 / 36%) 0 1px, transparent 1.8px)
+    background-size: 148px 176px, 233px 257px, 389px 421px
+    background-position: 0 0, 64px 72px, 122px 34px
+    opacity: 0.42
+}
+
+body::after{
+    content: ""
+    position: fixed
+    inset: 0
+    z-index: 0
+    pointer-events: none
+    background: linear-gradient(180deg, rgb(5 7 13 / 20%), rgb(5 7 13 / 72%) 72%, #05070d 100%)
+}
+
+body > *{
+    position: relative
+    z-index: 1
 }
 
 a{
@@ -36,146 +78,17 @@ button{
     font: inherit
 }
 
-.site-nav{
-    position: sticky
-    top: 0
-    z-index: 5
-    backdrop-filter: blur(18px)
-    background: rgba(246, 247, 249, 0.86)
-    border-bottom: solid 1px var(--line)
+textarea{
+    font: inherit
 }
 
-.site-nav a{
-    transition: color 120ms, background 120ms
-}
-
-.site-nav a:hover{
-    color: var(--accent-warm)
-}
-
-.nav-link{
-    padding: 0.7rem 0.85rem
-    border-radius: 0.45rem
-    color: var(--muted)
-    font-size: 0.88rem
-    font-weight: 650
-}
-
-.nav-link:hover{
-    background: rgba(17, 19, 21, 0.055)
-}
-
-.github-link{
-    background: var(--ink)
-    color: white
-}
-
-.github-link:hover{
-    background: #24282b
-    color: white
-}
-
-.site-footer{
-    border-top: solid 1px var(--line)
-}
-
-component BrandMark() {
-    display: flex
-    align-items: center
-    gap: 0.75rem
-    font-weight: 850
-    letter-spacing: -0.02em
-    content: [
-        new UIElement({
-            width: 2.2rem
-            height: 2.2rem
-            border-radius: 0.45rem
-            background: linear-gradient(135deg, var(--accent), var(--accent-warm) 58%, var(--accent-gold))
-            box-shadow: 0 12px 30px rgb(25 198 167 / 25%)
-            content: ""
-        })
-        new Wrapper("Rue", {
-            font-size: 1.08rem
-        })
-    ]
-}
-
-component NavLink(text, href, config = {}) {
-    tag: a
-    href: href
-    className: nav-link
-    content: text
-    ...config
-}
-
-component NavigationBar() {
-    className: site-nav
-    content: [
-        new UIElement({
-            max-width: 1180px
-            margin: 0 auto
-            padding: 0.9rem 1.4rem
-            display: grid
-            grid-template-columns: auto auto
-            align-items: center
-            gap: 1rem
-            content: [
-                new UIElement({
-                    tag: a
-                    href: /
-                    content: BrandMark()
-                })
-                new UIElement({
-                    display: flex
-                    align-items: center
-                    justify-content: end
-                    gap: 0.2rem
-                    flex-wrap: wrap
-                    content: [
-                        NavLink("Syntax", "#syntax")
-                        NavLink("Runtime", "#runtime")
-                        NavLink("Roadmap", "#roadmap")
-                        NavLink("GitHub", "https://github.com/aaron-meche/rue-lang", {
-                            className: nav-link github-link
-                            target: _blank
-                            rel: noopener
-                        })
-                    ]
-                })
-            ]
-        })
-    ]
-}
-
-component SiteFooter() {
-    className: site-footer
-    content: [
-        new UIElement({
-            max-width: 1180px
-            margin: 0 auto
-            padding: 2.2rem 1.4rem
-            display: grid
-            grid-template-columns: minmax(0, 1fr) auto
-            gap: 1rem
-            align-items: center
-            content: [
-                new Wrapper("Rue is an experimental language and compiler for building UI directly from .rue files.", {
-                    color: var(--muted)
-                    font-size: 0.92rem
-                    line-height: 1.6
-                })
-                new Wrapper("Created by Aaron Meche", {
-                    color: var(--muted)
-                    font-size: 0.92rem
-                    font-weight: 650
-                })
-            ]
-        })
-    ]
+::selection{
+    background: var(--cyan)
+    color: #03100f
 }
 
 Interface {
-    NavigationBar()
+    Navigation()
     Interface
-    SiteFooter()
+    Footer()
 }

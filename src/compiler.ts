@@ -17,6 +17,8 @@ import {
 } from './helpers.js';
 import * as RueUIRuntime from './interface.js';
 import { UIElement } from './interface.js';
+import fs from "fs";
+import path from "path";
 
 //
 // Type Exports
@@ -25,6 +27,10 @@ export type RueCallable = (...params: unknown[]) => unknown
 export type RueFunctionMap = Record<string, RueFunctionDefinition>
 export type RueInterface = unknown[]
 export type { RueFunctionSignature, RueStateMap } from './helpers.js';
+export interface RueSourcePart {
+    text: string
+    sourcePath: string
+}
 export interface RueFunctionDefinition {
     name: string
     params: string[]
@@ -35,6 +41,10 @@ export interface RueFunctionDefinition {
 //
 // Main RueFile Class
 export class RueFile {
+    #sourcePath: string | null = null       // Current file path, used for relative imports
+    #lineSourcePaths: string[] = []         // Source path for each raw text line
+    #importStack: string[] = []             // Tracks nested imports and prevents cycles
+    #resetRuntimeOnRun: boolean = true      // Root files reset live-state renderers, imports do not
     #rawText: string = ""               // Raw text content of imported file (.rue syntax)
     #cssOnion: string[] = []            // Array used to track real-time css attribute tree
     #cssMap: RueCSSMap = { ":root": [] }// JS Map that stores parsed CSS data, pre-compilation
@@ -47,13 +57,35 @@ export class RueFile {
     #currLineIndex: number = 0          // Number used for real-time active line tracking for errors
     #errors: string[] = []              // Array for caught errors
 
-    constructor(filepath?: string, autoCompile: boolean = true) {
-        if (filepath)
-            this.feed(readFileText(filepath), autoCompile)
+    constructor(
+        filepath?: string,
+        autoCompile: boolean = true,
+        importStack: string[] = [],
+        resetRuntimeOnRun: boolean = true
+    ) {
+        this.#resetRuntimeOnRun = resetRuntimeOnRun
+
+        if (filepath) {
+            let resolvedPath = path.resolve(filepath)
+            this.#sourcePath = resolvedPath
+            this.#importStack = importStack.length ? importStack : [resolvedPath]
+            this.feed(readFileText(resolvedPath), autoCompile, resolvedPath)
+        }
         return
     }
 
-    feed(string: string, autoCompile?: boolean): void {
+    feed(string: string, autoCompile?: boolean, sourcePath?: string): void {
+        if (sourcePath) {
+            let resolvedPath = path.resolve(sourcePath)
+            this.#sourcePath = resolvedPath
+            this.#lineSourcePaths = string.split("\n").map(() => resolvedPath)
+            if (!this.#importStack.length)
+                this.#importStack = [resolvedPath]
+        }
+        else {
+            this.#lineSourcePaths = []
+        }
+
         if (typeof string == "string")
             this.#rawText = string
         else this.#throwError("Feed", "first argument expected type string, not type " + typeof string)
@@ -61,6 +93,37 @@ export class RueFile {
         if (autoCompile)
             this.run()
         return
+    }
+
+    feedParts(parts: RueSourcePart[], autoCompile: boolean = true): void {
+        let textLines: string[] = []
+        let sourcePaths: string[] = []
+
+        parts.forEach(part => {
+            if (!part.text) return
+
+            let resolvedPath = path.resolve(part.sourcePath)
+            let lines = part.text.split("\n")
+
+            if (textLines.length) {
+                textLines.push("")
+                sourcePaths.push(resolvedPath)
+            }
+
+            textLines.push(...lines)
+            sourcePaths.push(...lines.map(() => resolvedPath))
+
+            if (!this.#sourcePath)
+                this.#sourcePath = resolvedPath
+            if (!this.#importStack.length)
+                this.#importStack = [resolvedPath]
+        })
+
+        this.#rawText = textLines.join("\n")
+        this.#lineSourcePaths = sourcePaths
+
+        if (autoCompile)
+            this.run()
     }
 
     #throwError(label: string, error: unknown): void {
@@ -85,7 +148,8 @@ export class RueFile {
         this.#rawJS = []
         this.#compiledCSS = []
         this.#errors = []
-        RueUIRuntime.resetStateRenderers()
+        if (this.#resetRuntimeOnRun)
+            RueUIRuntime.resetStateRenderers()
     }
 
     #parse(): void {
@@ -98,6 +162,8 @@ export class RueFile {
 
         for (this.#currLineIndex = 0; this.#currLineIndex < lineSplitText.length; this.#currLineIndex++) {
             try {
+                this.#sourcePath = this.#lineSourcePaths[this.#currLineIndex] || this.#sourcePath
+
                 let line = stripLineComment(lineSplitText[this.#currLineIndex]).trim()
                 if (!line) continue
 
@@ -111,6 +177,10 @@ export class RueFile {
                     // Raw JavaScript
                     case "{":
                         this.#captureRawJS(lineSplitText)
+                        break
+                    // Imports
+                    case "import":
+                        this.#addImport(line)
                         break
                     // State Variables
                     case "@state":
@@ -240,6 +310,64 @@ export class RueFile {
         this.#currLineIndex = lines.length - 1
         this.#throwError("raw js", "unclosed raw JavaScript block")
     }
+
+    #addImport(line: string): void {
+        let match = line.match(/^import\s+([A-Za-z_$][\w$]*)\s+from\s+["'](.+)["']\s*;?$/)
+
+        if (!match) {
+            this.#throwError("import", "expected syntax: import Name from \"./file.rue\"")
+            return
+        }
+
+        let importName = match[1]
+        let importPath = this.#resolveImportPath(match[2])
+
+        if (!importPath.endsWith(".rue")) {
+            this.#throwError("import", "only .rue imports are supported")
+            return
+        }
+        if (!fs.existsSync(importPath)) {
+            this.#throwError("import", "could not find " + importPath)
+            return
+        }
+        if ((this.#sourcePath && importPath == path.resolve(this.#sourcePath)) || this.#importStack.includes(importPath)) {
+            this.#throwError("import", "circular import detected for " + importPath)
+            return
+        }
+
+        let importedFile = new RueFile(importPath, true, [...this.#importStack, importPath], false)
+        this.#mergeImportedFile(importedFile)
+
+        this.#funcMap[importName] = {
+            name: importName,
+            params: [],
+            body: ["// imported Interface from " + importPath],
+            function: () => importedFile.getInterface(),
+        }
+    }
+
+    #resolveImportPath(importPath: string): string {
+        if (importPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(importPath))
+            return path.resolve(importPath)
+
+        let basePath = this.#sourcePath ? path.dirname(this.#sourcePath) : "."
+        return path.resolve(basePath, importPath)
+    }
+
+    #mergeImportedFile(importedFile: RueFile): void {
+        Object.keys(importedFile.#cssMap).forEach(selector => {
+            if (!this.#cssMap[selector]) this.#cssMap[selector] = []
+            this.#cssMap[selector].push(...importedFile.#cssMap[selector])
+        })
+
+        this.#stateMap = {
+            ...importedFile.#stateMap,
+            ...this.#stateMap
+        }
+
+        this.#rawJS.push(...importedFile.#rawJS)
+        this.#errors.push(...importedFile.#errors)
+    }
  
     #addFunction(lines: string[]): void {
         let startIndex = this.#currLineIndex
@@ -341,7 +469,7 @@ export class RueFile {
         if (line.endsWith("{") || line.endsWith("[")) return hadComma ? line + "," : line
         if (line.startsWith("let ") || line.startsWith("const ") || line.startsWith("var ")) return line
         if (line.includes("=") && !line.includes("=>")) return line
-        if (line.includes(".") && line.includes("(") && !line.startsWith("new ")) return line
+        if (/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)+\s*\(/.test(line)) return line
 
         if (line.includes(":"))
             line = this.#prepareObjectProperty(line, knownNames)

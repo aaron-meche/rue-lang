@@ -1,0 +1,96 @@
+//
+// Rue Studio Loop
+//
+
+.page-band{
+    border-top: solid 1px rgb(255 255 255 / 8%)
+}
+
+.feature-panel{
+    border: solid 1px rgb(255 255 255 / 11%)
+    background: rgb(255 255 255 / 5%)
+    transition: transform 140ms, border-color 140ms, background 140ms
+}
+
+.feature-panel:hover{
+    transform: translateY(-3px)
+    border-color: rgb(49 230 209 / 30%)
+    background: rgb(255 255 255 / 7%)
+}
+
+component SectionTitle(title, body) {
+    max-width: 760px
+    display: grid
+    gap: 0.85rem
+    content: [
+        new Wrapper(title, {
+            font-size: 3.2rem
+            line-height: 1
+            font-weight: 930
+            letter-spacing: 0
+        })
+        new Wrapper(body, {
+            color: var(--muted)
+            font-size: 1.04rem
+            line-height: 1.72
+        })
+    ]
+}
+
+component FeaturePanel(title, body) {
+    className: feature-panel
+    border-radius: 0.85rem
+    padding: 1.25rem
+    min-height: 12rem
+    content: [
+        new UIElement({
+            width: 2.1rem
+            height: 0.35rem
+            border-radius: 100vh
+            background: linear-gradient(90deg, var(--rose), var(--cyan))
+            margin-bottom: 1rem
+            content: ""
+        })
+        new Wrapper(title, {
+            font-size: 1.08rem
+            line-height: 1.2
+            font-weight: 850
+        })
+        new Wrapper(body, {
+            margin-top: 0.72rem
+            color: var(--muted)
+            font-size: 0.95rem
+            line-height: 1.62
+        })
+    ]
+}
+
+component StudioLoopSection() {
+    className: page-band
+    content: [
+        new UIElement({
+            max-width: 1180px
+            margin: 0 auto
+            padding: 5.4rem 1.2rem
+            display: grid
+            gap: 2rem
+            content: [
+                SectionTitle("The Rue Studio loop", "Rue Studio should make the language feel tangible: write the file, watch the compiler work, and inspect exactly what the runtime creates")
+                new UIElement({
+                    display: grid
+                    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr))
+                    gap: 1rem
+                    content: [
+                        FeaturePanel("Write", "Compose Rue syntax with component config, CSS-like styles, Interface output, imports, and live state in focused files")
+                        FeaturePanel("Compile", "Run the TypeScript compiler, surface diagnostics, and keep parser behavior readable enough to debug quickly")
+                        FeaturePanel("Preview", "Render UIElement output as static HTML while preserving enough runtime behavior for stateful demos")
+                    ]
+                })
+            ]
+        })
+    ]
+}
+
+Interface {
+    StudioLoopSection()
+}

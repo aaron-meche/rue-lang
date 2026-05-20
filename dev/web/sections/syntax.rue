@@ -1,0 +1,138 @@
+//
+// Rue Studio Syntax Section
+//
+
+.glass-panel{
+    border: solid 1px rgb(255 255 255 / 12%)
+    background: rgb(9 13 23 / 72%)
+    box-shadow: 0 24px 90px rgb(0 0 0 / 22%)
+}
+
+.code-window{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+}
+
+.code-line{
+    white-space: pre-wrap
+}
+
+component Dot(color) {
+    width: 0.72rem
+    height: 0.72rem
+    border-radius: 100vh
+    background: color
+    content: ""
+}
+
+component CodeLine(text, color = "inherit") {
+    className: code-line
+    color: color
+    font-size: 0.88rem
+    line-height: 1.62
+    content: text
+}
+
+component WindowHeader(title, action = "") {
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 1rem
+    padding: 0.82rem 0.95rem
+    border-bottom: solid 1px rgb(255 255 255 / 10%)
+    content: [
+        new UIElement({
+            display: flex
+            align-items: center
+            gap: 0.42rem
+            content: [
+                Dot("var(--rose)")
+                Dot("var(--gold)")
+                Dot("var(--cyan)")
+            ]
+        })
+        new Wrapper(title, {
+            color: var(--faint)
+            font-size: 0.75rem
+            font-weight: 750
+        })
+        new Wrapper(action, {
+            color: var(--cyan)
+            font-size: 0.75rem
+            font-weight: 750
+        })
+    ]
+}
+
+component SectionTitle(title, body) {
+    max-width: 760px
+    display: grid
+    gap: 0.85rem
+    content: [
+        new Wrapper(title, {
+            font-size: 3.2rem
+            line-height: 1
+            font-weight: 930
+            letter-spacing: 0
+        })
+        new Wrapper(body, {
+            color: var(--muted)
+            font-size: 1.04rem
+            line-height: 1.72
+        })
+    ]
+}
+
+component SyntaxSection() {
+    id: syntax
+    className: page-band
+    content: [
+        new UIElement({
+            max-width: 1180px
+            margin: 0 auto
+            padding: 5.4rem 1.2rem
+            display: grid
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+            gap: 1.4rem
+            align-items: stretch
+            content: [
+                SectionTitle("Rue syntax is the product", "Rue Studio should explain the language by showing working files instead of abstract marketing copy and every section should map back to real compiler behavior")
+                new UIElement({
+                    className: glass-panel code-window
+                    border-radius: 0.9rem
+                    overflow: hidden
+                    content: [
+                        WindowHeader("component syntax", "Rue")
+                        new UIElement({
+                            padding: 1.1rem
+                            display: grid
+                            gap: 0.24rem
+                            content: [
+                                CodeLine("import Navbar from \"./navbar.rue\"", "#ff9aa3")
+                                CodeLine("")
+                                CodeLine("component Hero(title) {", "#7df9e9")
+                                CodeLine("    padding: 2rem")
+                                CodeLine("    border-radius: 1rem")
+                                CodeLine("    content: [")
+                                CodeLine("        new UIElement({")
+                                CodeLine("            content: title")
+                                CodeLine("        })")
+                                CodeLine("        \"Plain text compiles too\"")
+                                CodeLine("    ]")
+                                CodeLine("}", "#7df9e9")
+                                CodeLine("")
+                                CodeLine("Interface {", "#ff9aa3")
+                                CodeLine("    Navbar()")
+                                CodeLine("    Hero(\"Build without HTML\")")
+                                CodeLine("}", "#ff9aa3")
+                            ]
+                        })
+                    ]
+                })
+            ]
+        })
+    ]
+}
+
+Interface {
+    SyntaxSection()
+}

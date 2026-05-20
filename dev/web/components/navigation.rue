@@ -1,0 +1,197 @@
+//
+// Rue Studio Navigation
+//
+
+.site-nav{
+    position: sticky
+    top: 0
+    z-index: 10
+    backdrop-filter: blur(22px)
+    background: rgb(5 7 13 / 72%)
+    border-bottom: solid 1px var(--line)
+}
+
+.site-nav-panel{
+    max-width: 1180px
+    margin: 0 auto
+    padding: 0.9rem 1.2rem
+    display: grid
+    grid-template-columns: auto minmax(0, 1fr)
+    align-items: center
+    gap: 1rem
+}
+
+.site-nav-links{
+    display: flex
+    align-items: center
+    justify-content: end
+    gap: 0.25rem
+    flex-wrap: wrap
+}
+
+.nav-link{
+    padding: 0.62rem 0.78rem
+    border-radius: 0.5rem
+    color: var(--muted)
+    font-size: 0.88rem
+    font-weight: 700
+    transition: color 140ms, background 140ms, border-color 140ms
+}
+
+.nav-link:hover{
+    color: var(--ink)
+    background: rgb(255 255 255 / 7%)
+}
+
+.github-link{
+    color: var(--ink)
+    border: solid 1px rgb(255 255 255 / 14%)
+    background: rgb(255 255 255 / 8%)
+}
+
+.github-link:hover{
+    border-color: rgb(49 230 209 / 42%)
+    background: rgb(49 230 209 / 12%)
+}
+
+component DachshundMark() {
+    width: 2.45rem
+    height: 2.2rem
+    position: relative
+    content: [
+        new UIElement({
+            position: absolute
+            left: 0.05rem
+            top: 0.18rem
+            width: 0.72rem
+            height: 1.58rem
+            border-radius: 100vh
+            background: linear-gradient(180deg, #5f2d1d, #2b120d)
+            transform: rotate(12deg)
+            content: ""
+        })
+        new UIElement({
+            position: absolute
+            right: 0.05rem
+            top: 0.18rem
+            width: 0.72rem
+            height: 1.58rem
+            border-radius: 100vh
+            background: linear-gradient(180deg, #6b3522, #2b120d)
+            transform: rotate(-12deg)
+            content: ""
+        })
+        new UIElement({
+            position: absolute
+            left: 0.47rem
+            top: 0
+            width: 1.52rem
+            height: 1.55rem
+            border-radius: 48% 48% 54% 54%
+            background: radial-gradient(circle at 32% 24%, #f7c08a, #b86136 52%, #6f321d 100%)
+            box-shadow: 0 0 34px rgb(255 93 102 / 28%)
+            content: [
+                new UIElement({
+                    position: absolute
+                    left: 0.38rem
+                    top: 0.48rem
+                    width: 0.16rem
+                    height: 0.16rem
+                    border-radius: 100vh
+                    background: #05070d
+                    content: ""
+                })
+                new UIElement({
+                    position: absolute
+                    right: 0.38rem
+                    top: 0.48rem
+                    width: 0.16rem
+                    height: 0.16rem
+                    border-radius: 100vh
+                    background: #05070d
+                    content: ""
+                })
+                new UIElement({
+                    position: absolute
+                    left: 0.53rem
+                    top: 0.72rem
+                    width: 0.46rem
+                    height: 0.34rem
+                    border-radius: 48% 48% 56% 56%
+                    background: #3a170f
+                    content: ""
+                })
+            ]
+        })
+    ]
+}
+
+component BrandMark() {
+    display: flex
+    align-items: center
+    gap: 0.72rem
+    font-weight: 850
+    content: [
+        DachshundMark()
+        new UIElement({
+            display: grid
+            gap: 0.05rem
+            content: [
+                new Wrapper("Rue Studio", {
+                    font-size: 1rem
+                    line-height: 1
+                    font-weight: 850
+                })
+                new Wrapper("compiler playground", {
+                    color: var(--faint)
+                    font-size: 0.72rem
+                    line-height: 1
+                    font-weight: 650
+                })
+            ]
+        })
+    ]
+}
+
+component NavLink(text, href, config = {}) {
+    tag: a
+    href: href
+    className: nav-link
+    content: text
+    ...config
+}
+
+component NavigationBar() {
+    className: site-nav
+    content: [
+        new UIElement({
+            className: site-nav-panel
+            content: [
+                new UIElement({
+                    tag: a
+                    href: /
+                    content: BrandMark()
+                })
+                new UIElement({
+                    className: site-nav-links
+                    content: [
+                        NavLink("Studio", "/#studio")
+                        NavLink("Syntax", "/#syntax")
+                        NavLink("Runtime", "/#runtime")
+                        NavLink("Sandbox", "/sandbox")
+                        NavLink("Roadmap", "/#roadmap")
+                        NavLink("GitHub", "https://github.com/aaron-meche/rue-lang", {
+                            className: nav-link github-link
+                            target: _blank
+                            rel: noopener
+                        })
+                    ]
+                })
+            ]
+        })
+    ]
+}
+
+Interface {
+    NavigationBar()
+}

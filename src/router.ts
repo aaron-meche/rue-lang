@@ -42,7 +42,16 @@ export class RueRouter {
         let source = readFileText(pagePath)
         let file = new RueFile()
 
-        file.feed(layoutText ? source + "\n\n" + layoutText : source, true)
+        if (layoutText) {
+            file.feedParts([
+                { text: source, sourcePath: pagePath },
+                { text: layoutText, sourcePath: path.join(this.webRoot, "layout.rue") },
+            ])
+        }
+        else {
+            file.feed(source, true, pagePath)
+        }
+
         writeFileText(outputPath, file.getHTML())
 
         return {

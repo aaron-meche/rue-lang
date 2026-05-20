@@ -159,6 +159,20 @@ Interface {
 
 The interface body is evaluated as an array of runtime UI content.
 
+### Imports
+
+Rue supports default imports from local `.rue` files. The imported name becomes a callable that returns the imported file's `Interface`.
+
+```rue
+import Navbar from "./navbar.rue"
+
+Interface {
+    Navbar()
+}
+```
+
+Imported CSS, state, raw JavaScript, and errors are merged into the importing file. Imports resolve relative to the current `.rue` file.
+
 ### Live State
 
 Use `@state` to define live values and `@name` to reference them inside Rue expressions.
@@ -321,7 +335,7 @@ Useful commands:
 ## Known Limits
 
 - Rue is experimental and changing quickly.
-- General import syntax is intentionally not part of the current workflow.
+- Only default local `.rue` imports are supported.
 - The old object-shaped `Interface { head, body, style }` model is removed.
 - Inline single-line CSS blocks are not currently supported.
 - The public package metadata may lag behind the active Rue UI direction.

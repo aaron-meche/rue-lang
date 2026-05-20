@@ -1,0 +1,387 @@
+//
+// Rue Studio Hero
+//
+
+.studio-shell{
+    min-height: 88vh
+    display: grid
+    align-items: center
+}
+
+.hero-title{
+    max-width: 920px
+    font-size: 5.9rem
+    line-height: 0.92
+    font-weight: 950
+    letter-spacing: 0
+    color: transparent
+    background: linear-gradient(90deg, #ffffff 0%, #ffc0c6 36%, var(--rose) 72%, #ff4f5c 100%)
+    background-clip: text
+}
+
+.hero-card{
+    border: solid 1px rgb(255 255 255 / 12%)
+    background: linear-gradient(180deg, rgb(12 17 30 / 88%), rgb(7 10 18 / 92%))
+    box-shadow: 0 42px 120px rgb(0 0 0 / 44%), 0 0 90px rgb(255 93 102 / 8%)
+}
+
+.code-window{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+}
+
+.code-line{
+    white-space: pre-wrap
+}
+
+.studio-preview-screen{
+    background: radial-gradient(circle at 50% 0%, rgb(255 93 102 / 18%), transparent 16rem), linear-gradient(180deg, rgb(255 255 255 / 8%), rgb(255 255 255 / 3%))
+}
+
+@state count = 4
+
+component DachshundHeroMark() {
+    width: 6.4rem
+    height: 5.55rem
+    position: relative
+    filter: drop-shadow(0 0 46px rgb(255 93 102 / 42%))
+    content: [
+        new UIElement({
+            position: absolute
+            left: 0.35rem
+            top: 0.46rem
+            width: 1.72rem
+            height: 4.08rem
+            border-radius: 100vh
+            background: linear-gradient(180deg, #7b3d26, #2a110c)
+            transform: rotate(13deg)
+            content: ""
+        })
+        new UIElement({
+            position: absolute
+            right: 0.35rem
+            top: 0.46rem
+            width: 1.72rem
+            height: 4.08rem
+            border-radius: 100vh
+            background: linear-gradient(180deg, #7b3d26, #2a110c)
+            transform: rotate(-13deg)
+            content: ""
+        })
+        new UIElement({
+            position: absolute
+            left: 1.42rem
+            top: 0
+            width: 3.58rem
+            height: 3.72rem
+            border-radius: 48% 48% 56% 56%
+            background: radial-gradient(circle at 30% 22%, #ffd19b, #c87240 48%, #79371f 100%)
+            box-shadow: inset 0 0 18px rgb(255 255 255 / 16%)
+            content: [
+                new UIElement({
+                    position: absolute
+                    left: 0.88rem
+                    top: 1.16rem
+                    width: 0.34rem
+                    height: 0.34rem
+                    border-radius: 100vh
+                    background: #05070d
+                    content: ""
+                })
+                new UIElement({
+                    position: absolute
+                    right: 0.88rem
+                    top: 1.16rem
+                    width: 0.34rem
+                    height: 0.34rem
+                    border-radius: 100vh
+                    background: #05070d
+                    content: ""
+                })
+                new UIElement({
+                    position: absolute
+                    left: 1.22rem
+                    top: 1.76rem
+                    width: 1.14rem
+                    height: 0.82rem
+                    border-radius: 52% 52% 62% 62%
+                    background: #36130d
+                    content: ""
+                })
+                new UIElement({
+                    position: absolute
+                    left: 1.66rem
+                    top: 2.42rem
+                    width: 0.22rem
+                    height: 0.42rem
+                    border-radius: 100vh
+                    background: #210b08
+                    content: ""
+                })
+            ]
+        })
+    ]
+}
+
+component Dot(color) {
+    width: 0.72rem
+    height: 0.72rem
+    border-radius: 100vh
+    background: color
+    content: ""
+}
+
+component CodeLine(text, color = "inherit") {
+    className: code-line
+    color: color
+    font-size: 0.88rem
+    line-height: 1.62
+    content: text
+}
+
+component WindowHeader(title, action = "") {
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 1rem
+    padding: 0.82rem 0.95rem
+    border-bottom: solid 1px rgb(255 255 255 / 10%)
+    content: [
+        new UIElement({
+            display: flex
+            align-items: center
+            gap: 0.42rem
+            content: [
+                Dot("var(--rose)")
+                Dot("var(--gold)")
+                Dot("var(--cyan)")
+            ]
+        })
+        new Wrapper(title, {
+            color: var(--faint)
+            font-size: 0.75rem
+            font-weight: 750
+        })
+        new Wrapper(action, {
+            color: var(--cyan)
+            font-size: 0.75rem
+            font-weight: 750
+        })
+    ]
+}
+
+component PrimaryLink(text, href) {
+    tag: a
+    href: href
+    width: fit-content
+    border-radius: 0.65rem
+    background: linear-gradient(135deg, var(--cyan), #8effef)
+    color: #031210
+    padding: 0.86rem 1.05rem
+    font-weight: 850
+    box-shadow: 0 18px 48px rgb(49 230 209 / 20%)
+    content: text
+}
+
+component SecondaryLink(text, href) {
+    tag: a
+    href: href
+    width: fit-content
+    border-radius: 0.65rem
+    border: solid 1px rgb(255 255 255 / 15%)
+    background: rgb(255 255 255 / 7%)
+    color: var(--ink)
+    padding: 0.84rem 1.05rem
+    font-weight: 800
+    content: text
+}
+
+component MiniStat(value, label) {
+    display: grid
+    gap: 0.3rem
+    content: [
+        new Wrapper(value, {
+            color: var(--cyan)
+            font-size: 1.35rem
+            line-height: 1
+            font-weight: 920
+        })
+        new Wrapper(label, {
+            color: var(--faint)
+            font-size: 0.78rem
+            line-height: 1.35
+            font-weight: 700
+        })
+    ]
+}
+
+component EditorPanel() {
+    className: code-window
+    border-right: solid 1px rgb(255 255 255 / 10%)
+    min-width: 0
+    content: [
+        WindowHeader("dev web main rue", "editing")
+        new UIElement({
+            padding: 1rem
+            display: grid
+            gap: 0.22rem
+            content: [
+                CodeLine("component Counter() {", "#7df9e9")
+                CodeLine("    display: grid")
+                CodeLine("    gap: 1rem")
+                CodeLine("    content: [")
+                CodeLine("        new UIElement({", "#ffd18a")
+                CodeLine("            content: () => {")
+                CodeLine("                return count")
+                CodeLine("            }")
+                CodeLine("        })", "#ffd18a")
+                CodeLine("        new Button(\"Increment\", {", "#ffd18a")
+                CodeLine("            onclick: () => { count++ }")
+                CodeLine("        })", "#ffd18a")
+                CodeLine("    ]")
+                CodeLine("}", "#7df9e9")
+            ]
+        })
+    ]
+}
+
+component CompilerPanel() {
+    border-right: solid 1px rgb(255 255 255 / 10%)
+    min-width: 0
+    content: [
+        WindowHeader("compiler", "clean")
+        new UIElement({
+            padding: 1rem
+            display: grid
+            gap: 0.8rem
+            content: [
+                MiniStat("3", "component captures")
+                MiniStat("1", "live state value")
+                MiniStat("0", "syntax errors")
+                new UIElement({
+                    height: 1px
+                    background: rgb(255 255 255 / 10%)
+                    content: ""
+                })
+                new Wrapper("Interface output is evaluated into real UIElement instances, then compiled into static HTML.", {
+                    color: var(--muted)
+                    font-size: 0.9rem
+                    line-height: 1.55
+                })
+            ]
+        })
+    ]
+}
+
+component PreviewPanel() {
+    min-width: 0
+    content: [
+        WindowHeader("preview", "running")
+        new UIElement({
+            className: studio-preview-screen
+            margin: 1rem
+            border-radius: 0.75rem
+            min-height: 18rem
+            padding: 1rem
+            display: grid
+            align-content: center
+            gap: 1rem
+            content: [
+                new Wrapper("Live Counter", {
+                    color: var(--faint)
+                    font-size: 0.86rem
+                    font-weight: 800
+                    text-transform: uppercase
+                })
+                new UIElement({
+                    color: white
+                    font-size: 4.4rem
+                    line-height: 1
+                    font-weight: 950
+                    content: () => {
+                        return @count
+                    }
+                })
+                new Button("Increment", {
+                    width: fit-content
+                    border-radius: 0.58rem
+                    background: var(--rose)
+                    color: white
+                    padding: 0.78rem 0.95rem
+                    font-weight: 850
+                    cursor: pointer
+                    onclick: () => {
+                        @count++
+                    }
+                })
+            ]
+        })
+    ]
+}
+
+component StudioMockup() {
+    id: studio
+    className: hero-card
+    border-radius: 1rem
+    overflow: hidden
+    content: [
+        new UIElement({
+            display: grid
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr))
+            min-height: 26rem
+            content: [
+                EditorPanel()
+                CompilerPanel()
+                PreviewPanel()
+            ]
+        })
+    ]
+}
+
+component HeroSection() {
+    className: studio-shell
+    content: [
+        new UIElement({
+            max-width: 1180px
+            margin: 0 auto
+            padding: 5.8rem 1.2rem 4.2rem
+            display: grid
+            gap: 3rem
+            content: [
+                new UIElement({
+                    display: grid
+                    justify-items: center
+                    text-align: center
+                    gap: 1.35rem
+                    content: [
+                        DachshundHeroMark()
+                        new Wrapper("Rue Studio", {
+                            className: hero-title
+                        })
+                        new Wrapper("A live workbench for writing Rue files, compiling interfaces, inspecting output, and proving the language by building with it.", {
+                            max-width: 760px
+                            color: var(--muted)
+                            font-size: 1.22rem
+                            line-height: 1.65
+                        })
+                        new UIElement({
+                            display: flex
+                            justify-content: center
+                            flex-wrap: wrap
+                            gap: 0.8rem
+                            margin-top: 0.4rem
+                            content: [
+                                PrimaryLink("Open sandbox", "/sandbox")
+                                SecondaryLink("Explore the studio", "#studio")
+                            ]
+                        })
+                    ]
+                })
+                StudioMockup()
+            ]
+        })
+    ]
+}
+
+Interface {
+    HeroSection()
+}

@@ -1,0 +1,40 @@
+//
+// Rue Studio Footer
+//
+
+.site-footer{
+    border-top: solid 1px var(--line)
+    background: rgb(5 7 13 / 42%)
+}
+
+component SiteFooter() {
+    className: site-footer
+    content: [
+        new UIElement({
+            max-width: 1180px
+            margin: 0 auto
+            padding: 2.4rem 1.2rem
+            display: grid
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))
+            gap: 1rem
+            align-items: center
+            content: [
+                new Wrapper("Rue Studio is the public surface for Rue: write a file, compile it, inspect the output, and ship static pages.", {
+                    color: var(--muted)
+                    font-size: 0.95rem
+                    line-height: 1.65
+                })
+                new Wrapper("Created by Aaron Meche", {
+                    color: var(--faint)
+                    font-size: 0.9rem
+                    font-weight: 700
+                    text-align: right
+                })
+            ]
+        })
+    ]
+}
+
+Interface {
+    SiteFooter()
+}

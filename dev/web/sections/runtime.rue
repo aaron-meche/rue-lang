@@ -1,0 +1,115 @@
+//
+// Rue Studio Runtime Section
+//
+
+.glass-panel{
+    border: solid 1px rgb(255 255 255 / 12%)
+    background: rgb(9 13 23 / 72%)
+    box-shadow: 0 24px 90px rgb(0 0 0 / 22%)
+}
+
+@state count = 4
+
+component SectionTitle(title, body) {
+    max-width: 760px
+    display: grid
+    gap: 0.85rem
+    content: [
+        new Wrapper(title, {
+            font-size: 3.2rem
+            line-height: 1
+            font-weight: 930
+            letter-spacing: 0
+        })
+        new Wrapper(body, {
+            color: var(--muted)
+            font-size: 1.04rem
+            line-height: 1.72
+        })
+    ]
+}
+
+component RuntimeSection() {
+    id: runtime
+    className: page-band
+    content: [
+        new UIElement({
+            max-width: 1180px
+            margin: 0 auto
+            padding: 5.4rem 1.2rem
+            display: grid
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+            gap: 1.4rem
+            align-items: center
+            content: [
+                new UIElement({
+                    className: glass-panel
+                    border-radius: 0.9rem
+                    padding: 1.3rem
+                    display: grid
+                    gap: 1rem
+                    content: [
+                        new Wrapper("Runtime proof", {
+                            color: var(--faint)
+                            font-size: 0.82rem
+                            font-weight: 800
+                            text-transform: uppercase
+                        })
+                        new UIElement({
+                            display: grid
+                            grid-template-columns: auto minmax(0, 1fr)
+                            gap: 1rem
+                            align-items: center
+                            content: [
+                                new UIElement({
+                                    width: 5.3rem
+                                    height: 5.3rem
+                                    border-radius: 1rem
+                                    background: linear-gradient(135deg, rgb(49 230 209 / 22%), rgb(255 93 102 / 18%))
+                                    display: flex
+                                    align-items: center
+                                    justify-content: center
+                                    color: var(--cyan)
+                                    font-size: 2.6rem
+                                    font-weight: 950
+                                    content: () => {
+                                        return @count
+                                    }
+                                })
+                                new UIElement({
+                                    display: grid
+                                    gap: 0.55rem
+                                    content: [
+                                        new Wrapper("Live state updates generated HTML in place.", {
+                                            font-size: 1.25rem
+                                            line-height: 1.2
+                                            font-weight: 850
+                                        })
+                                        new Button("Increment state", {
+                                            width: fit-content
+                                            border-radius: 0.55rem
+                                            background: rgb(255 255 255 / 8%)
+                                            border: solid 1px rgb(255 255 255 / 14%)
+                                            color: var(--ink)
+                                            padding: 0.72rem 0.9rem
+                                            font-weight: 800
+                                            cursor: pointer
+                                            onclick: () => {
+                                                @count++
+                                            }
+                                        })
+                                    ]
+                                })
+                            ]
+                        })
+                    ]
+                })
+                SectionTitle("Small runtime, visible behavior", "Rue does not need to hide behind a giant framework story and the studio should show compiler output, runtime classes, state renderers, and route generation plainly")
+            ]
+        })
+    ]
+}
+
+Interface {
+    RuntimeSection()
+}

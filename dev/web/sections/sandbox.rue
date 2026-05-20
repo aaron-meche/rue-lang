@@ -1,0 +1,193 @@
+//
+// Rue Studio Sandbox
+//
+
+.sandbox-page{
+    min-height: calc(100vh - 4.2rem)
+}
+
+.sandbox-shell{
+    border-top: solid 1px rgb(255 255 255 / 8%)
+}
+
+.sandbox-panel{
+    border: solid 1px rgb(255 255 255 / 12%)
+    background: rgb(9 13 23 / 72%)
+    box-shadow: 0 24px 90px rgb(0 0 0 / 22%)
+}
+
+.sandbox-editor{
+    width: 100%
+    min-height: 62vh
+    resize: vertical
+    border: none
+    outline: none
+    background: transparent
+    color: var(--ink)
+    padding: 1.1rem
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+    font-size: 0.92rem
+    line-height: 1.62
+}
+
+.sandbox-preview{
+    width: 100%
+    min-height: 62vh
+    border: none
+    background: white
+}
+
+component PanelHeader(title, status) {
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 1rem
+    padding: 0.86rem 1rem
+    border-bottom: solid 1px rgb(255 255 255 / 10%)
+    content: [
+        new Wrapper(title, {
+            font-weight: 850
+        })
+        new Wrapper(status, {
+            color: var(--cyan)
+            font-size: 0.78rem
+            font-weight: 800
+        })
+    ]
+}
+
+component EditorPanel() {
+    className: sandbox-panel
+    border-radius: 0.9rem
+    overflow: hidden
+    content: [
+        PanelHeader("sandbox.rue", "editable")
+        new UIElement({
+            tag: textarea
+            id: sandbox-editor
+            className: sandbox-editor
+            attrs: {
+                spellcheck: false
+            }
+            content: ""
+        })
+    ]
+}
+
+component PreviewPanel() {
+    className: sandbox-panel
+    border-radius: 0.9rem
+    overflow: hidden
+    content: [
+        PanelHeader("Live HTML preview", "browser")
+        new UIElement({
+            tag: iframe
+            id: sandbox-preview
+            className: sandbox-preview
+            attrs: {
+                title: Rue Studio sandbox preview
+            }
+            content: ""
+        })
+    ]
+}
+
+component SandboxPage() {
+    id: sandbox
+    className: sandbox-shell sandbox-page
+    content: [
+        new UIElement({
+            max-width: 1440px
+            margin: 0 auto
+            padding: 2rem 1.2rem 3rem
+            display: grid
+            gap: 1.2rem
+            content: [
+                new UIElement({
+                    display: grid
+                    gap: 0.55rem
+                    content: [
+                        new Wrapper("Rue Sandbox", {
+                            font-size: 3.4rem
+                            line-height: 1
+                            font-weight: 930
+                        })
+                        new Wrapper("A first full-screen workspace for drafting Rue files and watching a live HTML preview update as you type.", {
+                            color: var(--muted)
+                            font-size: 1.04rem
+                            line-height: 1.65
+                            max-width: 780px
+                        })
+                    ]
+                })
+                new UIElement({
+                    display: grid
+                    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))
+                    gap: 1rem
+                    align-items: stretch
+                    content: [
+                        EditorPanel()
+                        PreviewPanel()
+                    ]
+                })
+            ]
+        })
+    ]
+}
+
+{
+    const editor = document.getElementById("sandbox-editor")
+    const preview = document.getElementById("sandbox-preview")
+
+    const seed = [
+        "component Card() {",
+        "    padding: 2rem",
+        "    border-radius: 1rem",
+        "    background: linear-gradient(135deg, #101828, #18243a)",
+        "    color: white",
+        "    content: [",
+        "        new UIElement({",
+        "            font-size: 2rem",
+        "            font-weight: 900",
+        "            content: \"Hello from Rue\"",
+        "        })",
+        "        \"Edit this file and the preview updates\"",
+        "    ]",
+        "}",
+        "",
+        "Interface {",
+        "    Card()",
+        "}"
+    ].join("\\n")
+
+    function escapeHTML(input) {
+        return input
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+    }
+
+    function renderSandbox() {
+        const source = editor.value
+        const escaped = escapeHTML(source)
+
+        preview.srcdoc =
+            "<!doctype html><html><head><style>" +
+            "body{margin:0;min-height:100vh;background:#070a12;color:#f7f8ff;font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;padding:2rem;}" +
+            ".card{max-width:720px;border:1px solid rgb(255 255 255 / 12%);border-radius:1rem;background:linear-gradient(135deg,rgb(49 230 209 / 18%),rgb(255 93 102 / 18%));padding:1.4rem;box-shadow:0 24px 80px rgb(0 0 0 / 35%);}" +
+            "pre{margin:0;white-space:pre-wrap;font:600 0.92rem/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;}" +
+            "</style></head><body><div class='card'><pre>" +
+            escaped +
+            "</pre></div></body></html>"
+    }
+
+    if (editor && preview) {
+        editor.value = seed
+        editor.addEventListener("input", renderSandbox)
+        renderSandbox()
+    }
+}
+
+Interface {
+    SandboxPage()
+}

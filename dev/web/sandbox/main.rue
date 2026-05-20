@@ -1,0 +1,13 @@
+//
+// Rue Studio Sandbox Route
+//
+
+import Sandbox from "../sections/sandbox.rue"
+
+{
+    document.title = "Rue Studio Sandbox"
+}
+
+Interface {
+    Sandbox()
+}

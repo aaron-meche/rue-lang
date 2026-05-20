@@ -1,0 +1,91 @@
+//
+// Rue Studio Roadmap Section
+//
+
+component SectionTitle(title, body) {
+    max-width: 760px
+    display: grid
+    gap: 0.85rem
+    content: [
+        new Wrapper(title, {
+            font-size: 3.2rem
+            line-height: 1
+            font-weight: 930
+            letter-spacing: 0
+        })
+        new Wrapper(body, {
+            color: var(--muted)
+            font-size: 1.04rem
+            line-height: 1.72
+        })
+    ]
+}
+
+component RoadmapItem(number, title, body) {
+    display: grid
+    grid-template-columns: auto minmax(0, 1fr)
+    gap: 1rem
+    align-items: start
+    padding: 1.15rem 0
+    border-top: solid 1px rgb(255 255 255 / 10%)
+    content: [
+        new Wrapper(number, {
+            width: 2.1rem
+            height: 2.1rem
+            border-radius: 100vh
+            background: rgb(255 93 102 / 14%)
+            color: var(--rose-soft)
+            display: flex
+            align-items: center
+            justify-content: center
+            font-weight: 900
+        })
+        new UIElement({
+            display: grid
+            gap: 0.35rem
+            content: [
+                new Wrapper(title, {
+                    font-weight: 860
+                    font-size: 1.05rem
+                })
+                new Wrapper(body, {
+                    color: var(--muted)
+                    line-height: 1.62
+                })
+            ]
+        })
+    ]
+}
+
+component RoadmapSection() {
+    id: roadmap
+    className: page-band
+    content: [
+        new UIElement({
+            max-width: 1180px
+            margin: 0 auto
+            padding: 5.4rem 1.2rem 6.8rem
+            display: grid
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+            gap: 2rem
+            align-items: start
+            content: [
+                SectionTitle("Build the studio around real compiler work", "The next phase should turn the homepage into a usable playground while keeping each language feature easy to inspect and test")
+                new UIElement({
+                    display: grid
+                    gap: 0.25rem
+                    content: [
+                        RoadmapItem("1", "Playground editor", "Run Rue compilation from a browser editor and show HTML, CSS, errors, and preview side by side")
+                        RoadmapItem("2", "Diagnostics surface", "Convert compiler errors into clear line-aware messages that make Rue easier to learn")
+                        RoadmapItem("3", "Example library", "Ship focused examples for components, Interface blocks, route layouts, live state, and raw JS escape hatches")
+                        RoadmapItem("4", "Portfolio dogfooding", "Use Rue Studio to rebuild the portfolio when the language is stable enough to explain itself publicly")
+                    ]
+                })
+            ]
+        })
+    ]
+}
+
+Interface {
+    RoadmapSection()
+}
