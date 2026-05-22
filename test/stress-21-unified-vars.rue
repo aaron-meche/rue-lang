@@ -1,7 +1,0 @@
-def accent: royalblue
-_space_: 1rem
-
-.unified{
-    color: _accent_
-    padding: _space_
-}

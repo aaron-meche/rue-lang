@@ -1,0 +1,22 @@
+@state count = 2
+
+component Counter() {
+    display: grid
+    gap: 1rem
+    content: [
+        new UIElement({
+            content: () => {
+                return "Count: " + @count
+            }
+        })
+        new Button("+", {
+            onclick: () => {
+                @count++
+            }
+        })
+    ]
+}
+
+Interface {
+    Counter()
+}

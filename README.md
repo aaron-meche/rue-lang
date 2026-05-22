@@ -29,11 +29,10 @@ For local development:
 
 ```bash
 npm install
-npm run build
-node test.js
+npm test
 ```
 
-The local smoke test builds routes from `dev/web` into `dev/out`.
+`npm test` runs the compiler/runtime/router fixture suite.
 
 ## Basic Route Build
 

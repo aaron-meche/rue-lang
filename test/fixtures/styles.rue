@@ -1,0 +1,11 @@
+def ink: #111315
+def accent: #19c6a7
+
+.card{
+    padding: 1rem
+    color: var(--ink)
+
+    :hover{
+        color: var(--accent)
+    }
+}

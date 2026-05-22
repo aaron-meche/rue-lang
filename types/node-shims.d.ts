@@ -8,6 +8,7 @@ declare module "fs" {
 		readFileSync(path: string, encoding: string): string
 		writeFileSync(path: string, content: string): void
 		mkdirSync(path: string, options?: { recursive?: boolean }): void
+		rmSync(path: string, options?: { recursive?: boolean, force?: boolean }): void
 		existsSync(path: string): boolean
 		readdirSync(path: string, options: { withFileTypes: true }): Dirent[]
 	}

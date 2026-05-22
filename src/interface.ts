@@ -26,6 +26,7 @@ declare global {
 }
 
 let stateManager: Record<string, StateRenderer> = {}
+let stateRendererCounter = 0
 
 export function getStateRenderers(): Record<string, string> {
     let renderers: Record<string, string> = {}
@@ -39,6 +40,7 @@ export function getStateRenderers(): Record<string, string> {
 
 export function resetStateRenderers(): void {
     stateManager = {}
+    stateRendererCounter = 0
 }
 
 const attributeKeys = new Set([
@@ -209,7 +211,7 @@ export class UIElement {
         },
         content: input => {
             if (typeof input == "function") {
-                let id = "state_" + Math.random().toString(36).substring(2, 11)
+                let id = "state_" + stateRendererCounter++
                 let renderer = input as StateRenderer
                 this.content = toHTML(renderer())
                 this.identifiers.live_state = id

@@ -1,0 +1,15 @@
+.layout-shell{
+    padding: 2rem
+}
+
+component LayoutShell() {
+    className: layout-shell
+    content: [
+        new Wrapper("Fixture Layout")
+        Interface
+    ]
+}
+
+Interface {
+    LayoutShell()
+}

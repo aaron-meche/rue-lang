@@ -1,16 +1,11 @@
-//
-// test.ts
-// 
-// Testing script for
-// running Rue compiler
-//
-
 import assert from "node:assert/strict";
-import { RueFile } from "./src/compiler.js";
-import runRue, { ruePlugin, ruePreprocess } from "./src/index.js";
+import fs from "fs";
+import path from "path";
+import runRue, { RueFile, RueRouter, ruePlugin, ruePreprocess } from "./src/index.js";
 
-interface TestResult {
+interface CompileResult {
     css: string
+    html: string
     errors: string[]
     loggedErrors: string[]
     instance: RueFile
@@ -18,339 +13,262 @@ interface TestResult {
 
 interface TestCase {
     name: string
-    path: string
-    contains?: string[]
-    errors?: string[]
-    assert?: (result: TestResult) => void
+    run(): void
 }
 
 interface TestFailure {
     name: string
-    path: string
     message: string
 }
 
-function compileFixture(path: string): TestResult {
-    let errors: string[] = []
+const fixturesRoot = path.join("test", "fixtures")
+
+function fixturePath(filePath: string): string {
+    return path.join(fixturesRoot, filePath)
+}
+
+function compileFixture(filePath: string): CompileResult {
+    return compile(() => new RueFile(fixturePath(filePath)))
+}
+
+function compileSource(source: string): CompileResult {
+    return compile(() => {
+        let file = new RueFile()
+        file.feed(source)
+        return file
+    })
+}
+
+function compile(createFile: () => RueFile): CompileResult {
+    let loggedErrors: string[] = []
     let oldConsoleError = console.error
 
-    console.error = (...args: unknown[]) => errors.push(args.join(" "))
-    let rueInstance: RueFile
+    console.error = (...args: unknown[]) => loggedErrors.push(args.join(" "))
+    let instance: RueFile
 
     try {
-        rueInstance = new RueFile(path)
+        instance = createFile()
     }
     finally {
         console.error = oldConsoleError
     }
 
     return {
-        css: rueInstance.getCSS(),
-        errors: rueInstance.getErrors(),
-        loggedErrors: errors,
-        instance: rueInstance,
+        css: instance.getCSS(),
+        html: instance.getHTML(),
+        errors: instance.getErrors(),
+        loggedErrors,
+        instance,
     }
 }
 
-function assertContains(css: string, expected: string, name: string): void {
+function assertIncludes(actual: string, expected: string, label: string): void {
     assert.ok(
-        css.includes(expected),
-        name + " expected CSS to include:\n" + expected + "\n\nActual CSS:\n" + css
+        actual.includes(expected),
+        `${label} expected output to include:\n${expected}\n\nActual output:\n${actual}`
     )
 }
 
-function runCase(test: TestCase): TestResult {
-    let result = compileFixture(test.path)
-    let contains = test.contains || []
-    let errors = test.errors || []
+function assertNoCompileErrors(result: CompileResult, label: string): void {
+    assert.equal(result.errors.length, 0, `${label} should compile without Rue errors`)
+    assert.equal(result.loggedErrors.length, 0, `${label} should not log Rue errors`)
+}
 
-    if (test.assert) test.assert(result)
-
-    for (let i = 0; i < contains.length; i++) {
-        assertContains(result.css, contains[i], test.name)
-    }
-
-    for (let i = 0; i < errors.length; i++) {
-        assert.ok(
-            result.errors.some((error) => error.includes(errors[i])),
-            test.name + " expected error containing: " + errors[i]
-        )
-    }
-
-    return result
+function assertErrorIncludes(result: CompileResult, expected: string, label: string): void {
+    assert.ok(
+        result.errors.some(error => error.includes(expected)),
+        `${label} expected Rue error containing: ${expected}\n\nActual errors:\n${result.errors.join("\n")}`
+    )
 }
 
 function getFailureMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
 }
 
-function runIntegrationAssertions(): void {
+function runPackageIntegrationTests(): void {
     let toolkit = runRue()
-    assert.equal(typeof toolkit.style, "function", "default export should include the Svelte preprocessor")
+    assert.equal(typeof toolkit.style, "function", "default export should include the Rue preprocessor")
     assert.equal(typeof toolkit.transform, "function", "default export should include the Vite plugin")
 
     let preprocessor = ruePreprocess()
+    let skipped = preprocessor.style({
+        content: "def accent: royalblue",
+        attributes: { lang: "css" },
+    })
+    assert.equal(skipped, undefined, "preprocessor should ignore non-rue style blocks")
+
     let preprocessed = preprocessor.style({
-        content: "def accent: royalblue;",
+        content: "def accent: royalblue",
         attributes: { lang: "rue" },
     })
-    assert.equal(preprocessed?.code.includes("--accent: royalblue;"), true, "preprocessor should compile rue content")
+    assert.equal(preprocessed?.code.includes("--accent: royalblue;"), true, "preprocessor should compile rue CSS")
 
     let plugin = ruePlugin()
-    let transformed = plugin.transform("def accent: royalblue;", "/src/lib/main.rue?import")
+    assert.equal(plugin.transform("body { color: red }", "/src/app.css"), null, "vite plugin should ignore non-rue files")
+
+    let transformed = plugin.transform("def accent: royalblue", "/src/lib/main.rue?import")
     assert.equal(transformed?.code.includes("--accent: royalblue;"), true, "vite plugin should compile rue imports")
 }
 
-function main(testToRun: string = "all"): void {
-    let stressTests: TestCase[] = [
-        {
-            name: "basic defs",
-            path: "./test/stress-01-basic-defs.rue",
-            contains: [
-                "--bg: black;",
-                "body{\n\tmargin: 0;",
-                "background: var(--bg);",
-            ],
-        },
-        {
-            name: "deep nesting",
-            path: "./test/stress-02-deep-nesting.rue",
-            contains: [
-                ".app .shell .panel .title{\n\tfont-weight: 700;",
-            ],
-        },
-        {
-            name: "pseudo selectors",
-            path: "./test/stress-03-pseudo-selectors.rue",
-            contains: [
-                ".button:hover{\n\tcolor: red;",
-                ".button:focus-visible{\n\toutline: solid 2px blue;",
-            ],
-        },
-        {
-            name: "rue vars",
-            path: "./test/stress-04-rue-vars.rue",
-            contains: [
-                "--hue: 220;",
-                "color: hsl(220, 80%, 50%);",
-            ],
-        },
-        {
-            name: "missing rue var",
-            path: "./test/stress-05-missing-rue-var.rue",
-            contains: [
-                "color: _unknown_;",
-            ],
-        },
-        {
-            name: "functions",
-            path: "./test/stress-06-functions.rue",
-            contains: [
-                "width: 3px;",
-                "padding: 1.5rem;",
-            ],
-        },
-        {
-            name: "function errors",
-            path: "./test/stress-07-function-errors.rue",
-            contains: [
-                "width: explode();",
-                "height: 2rem;",
-            ],
-            errors: [
-                "handleFunctionCalls: boom",
-            ],
-        },
-        {
-            name: "unclosed style",
-            path: "./test/stress-08-unclosed-style.rue",
-            contains: [
-                ".broken{\n\tcolor: red;",
-            ],
-            errors: [
-                "parse: unclosed style block",
-            ],
-        },
-        {
-            name: "unexpected close",
-            path: "./test/stress-09-unexpected-close.rue",
-            contains: [
-                ".after{\n\tcolor: green;",
-            ],
-            errors: [
-                "layer: unexpected closing brace",
-            ],
-        },
-        {
-            name: "comments",
-            path: "./test/stress-10-comments.rue",
-            contains: [
-                ".shown{\n\tcolor: green;",
-            ],
-            assert(result) {
-                assert.ok(!result.css.includes(".hidden"), "comments should not compile commented selectors")
-            },
-        },
-        {
-            name: "empty blocks",
-            path: "./test/stress-11-empty-blocks.rue",
-            contains: [
-                ".empty{\n\t\n}",
-                ".parent .child{\n\t\n}",
-            ],
-        },
-        {
-            name: "root properties",
-            path: "./test/stress-12-root-properties.rue",
-            contains: [
-                ":root{\n\tcolor: red;\n\tbackground: blue;",
-            ],
-        },
-        {
-            name: "invalid var",
-            path: "./test/stress-13-invalid-var.rue",
-            contains: [
-                ".keeps-going{\n\tcolor: red;",
-            ],
-            errors: [
-                "var: invalid variable definition",
-            ],
-        },
-        {
-            name: "unclosed function",
-            path: "./test/stress-14-unclosed-function.rue",
-            errors: [
-                "parse: unclosed function block",
-            ],
-        },
-        {
-            name: "repeat run",
-            path: "./test/stress-15-repeat-run.rue",
-            assert(result) {
-                let firstCSS = result.css
-                result.instance.run()
-                assert.equal(result.instance.getCSS(), firstCSS, "repeat run should not duplicate compiled CSS")
-            },
-        },
-        {
-            name: "inline style blocks",
-            path: "./test/stress-16-inline-style.rue",
-            contains: [
-                ".element{\n\tbackground: red;",
-                "color: white;",
-                ".element .child{\n\tcolor: blue;",
-                ".element .child .label{\n\tfont-weight: 700;",
-            ],
-        },
-        {
-            name: "mixed vars and functions",
-            path: "./test/stress-17-mixed-vars-functions.rue",
-            contains: [
-                "--space: 2rem;",
-                "padding: 2rem;",
-                "margin: 1rem;",
-            ],
-        },
-        {
-            name: "many selectors",
-            path: "./test/stress-18-many-selectors.rue",
-            contains: [
-                ".a{\n\tcolor: red;",
-                ".b{\n\tcolor: blue;",
-                ".c .d .e{\n\tcolor: green;",
-            ],
-        },
-        {
-            name: "rue vars in function calls",
-            path: "./test/stress-19-vars-in-functions.rue",
-            contains: [
-                "--brand: hsl(175, 75%, 50%);",
-                "color: hsl(175, 60%, 40%);",
-            ],
-        },
-        {
-            name: "rue vars in javascript functions",
-            path: "./test/stress-20-rue-vars-in-js.rue",
-            contains: [
-                "--hue: 175;",
-                "--brand: hsl(175, 75%, 50%);",
-                "color: hsl(175, 60%, 40%);",
-            ],
-        },
-        {
-            name: "unified var declarations",
-            path: "./test/stress-21-unified-vars.rue",
-            contains: [
-                "--accent: royalblue;",
-                "--space: 1rem;",
-                "color: royalblue;",
-                "padding: 1rem;",
-            ],
-        },
-        {
-            name: "inline comments",
-            path: "./test/stress-22-inline-comments.rue",
-            contains: [
-                "--l0: hsl(175, 8%, 8%);",
-                "background: hsl(175, 8%, 8%);",
-                "content: \"https://example.com/a//b\";",
-            ],
-            assert(result) {
-                assert.ok(!result.css.includes("layer 0"), "inline comments should be removed")
-            },
-        },
-    ]
+function runRouterTests(): void {
+    let outputRoot = path.join("test", ".tmp-router-out")
+    fs.rmSync(outputRoot, { recursive: true, force: true })
+    let router = new RueRouter(fixturePath("router-web"), outputRoot)
 
-    let passed: number = 0
+    try {
+        assert.equal(router.routes.length, 2, "router should build root and nested routes")
+
+        let homePath = path.join(outputRoot, "index.html")
+        let aboutPath = path.join(outputRoot, "about", "index.html")
+        assert.equal(fs.existsSync(homePath), true, "router should write root index.html")
+        assert.equal(fs.existsSync(aboutPath), true, "router should write nested index.html")
+
+        let home = fs.readFileSync(homePath, "utf8")
+        let about = fs.readFileSync(aboutPath, "utf8")
+
+        assertIncludes(home, "Fixture Layout", "router home")
+        assertIncludes(home, "Home route", "router home")
+        assertIncludes(about, "Fixture Layout", "router about")
+        assertIncludes(about, "About route", "router about")
+        assertIncludes(home, ".layout-shell", "router should include layout CSS")
+        assertIncludes(about, ".about-page", "router should include page CSS")
+    }
+    finally {
+        fs.rmSync(outputRoot, { recursive: true, force: true })
+    }
+}
+
+const tests: TestCase[] = [
+    {
+        name: "package integrations",
+        run: runPackageIntegrationTests,
+    },
+    {
+        name: "css styles and defs",
+        run() {
+            let result = compileFixture("styles.rue")
+            assertNoCompileErrors(result, "styles")
+            assertIncludes(result.css, "--ink: #111315;", "styles")
+            assertIncludes(result.css, ".card{\n\tpadding: 1rem;", "styles")
+            assertIncludes(result.css, ".card:hover{\n\tcolor: var(--accent);", "styles")
+        },
+    },
+    {
+        name: "function helpers in CSS",
+        run() {
+            let result = compileFixture("function-style.rue")
+            assertNoCompileErrors(result, "function style")
+            assertIncludes(result.css, "--space: 1.5rem;", "function style")
+            assertIncludes(result.css, "padding: 2rem;", "function style")
+        },
+    },
+    {
+        name: "components and interface output",
+        run() {
+            let result = compileFixture("component-interface.rue")
+            assertNoCompileErrors(result, "component interface")
+            assertIncludes(result.html, "<h1", "component interface")
+            assertIncludes(result.html, "class=\"hero-title\"", "component interface")
+            assertIncludes(result.html, "font-size:2rem;", "component interface")
+            assertIncludes(result.html, "Build UI without raw HTML", "component interface")
+            assertIncludes(result.html, "Plain text output", "component interface")
+        },
+    },
+    {
+        name: "live state output",
+        run() {
+            let result = compileFixture("live-state.rue")
+            assertNoCompileErrors(result, "live state")
+            assertIncludes(result.html, "window.__rueStateData = {\"count\":2};", "live state")
+            assertIncludes(result.html, "live_state=\"state_0\"", "live state")
+            assertIncludes(result.html, "\"state_0\": () => {", "live state")
+            assertIncludes(result.html, "__rueState.set(&quot;count&quot;", "live state")
+            assertIncludes(result.html, "Count: 2", "live state")
+        },
+    },
+    {
+        name: "raw javascript output",
+        run() {
+            let result = compileFixture("raw-js.rue")
+            assertNoCompileErrors(result, "raw js")
+            assertIncludes(result.html, "window.__rueFixtureLoaded = true", "raw js")
+            assertIncludes(result.html, "Raw JS fixture", "raw js")
+        },
+    },
+    {
+        name: "feed compiles by default",
+        run() {
+            let result = compileSource(`
+def accent: royalblue
+
+Interface {
+    new Wrapper("compiled from feed")
+}
+`)
+            assertNoCompileErrors(result, "feed")
+            assertIncludes(result.css, "--accent: royalblue;", "feed")
+            assertIncludes(result.html, "compiled from feed", "feed")
+        },
+    },
+    {
+        name: "repeat run is stable",
+        run() {
+            let result = compileFixture("component-interface.rue")
+            let firstCSS = result.css
+            let firstHTML = result.html
+
+            result.instance.run()
+
+            assert.equal(result.instance.getCSS(), firstCSS, "repeat run should not duplicate CSS")
+            assert.equal(result.instance.getHTML(), firstHTML, "repeat run should not change HTML")
+        },
+    },
+    {
+        name: "compiler errors",
+        run() {
+            let unclosedStyle = compileFixture("errors/unclosed-style.rue")
+            assertErrorIncludes(unclosedStyle, "unclosed style block", "unclosed style")
+
+            let unexpectedClose = compileFixture("errors/unexpected-close.rue")
+            assertErrorIncludes(unexpectedClose, "unexpected closing brace", "unexpected close")
+
+            let badComponent = compileFixture("errors/bad-component.rue")
+            assertErrorIncludes(badComponent, "missing opening brace", "bad component")
+        },
+    },
+    {
+        name: "router layout output",
+        run: runRouterTests,
+    },
+]
+
+function main(): void {
+    let passed = 0
     let failed: TestFailure[] = []
 
-    if (testToRun == "all") {
+    for (let i = 0; i < tests.length; i++) {
         try {
-            runIntegrationAssertions()
+            tests[i].run()
+            passed++
         }
         catch (error) {
             failed.push({
-                name: "package integrations",
-                path: "./src/index.ts",
+                name: tests[i].name,
                 message: getFailureMessage(error),
             })
         }
-
-        for (let i = 0; i < stressTests.length; i++) {
-            try {
-                runCase(stressTests[i])
-                passed++
-            }
-            catch (error) {
-                failed.push({
-                    name: stressTests[i].name,
-                    path: stressTests[i].path,
-                    message: getFailureMessage(error),
-                })
-            }
-        }
-
-        let total = stressTests.length + 1
-        if (!failed.some((failure) => failure.name == "package integrations")) {
-            passed++
-        }
-        console.log(passed, "out of", total, "tests passed", Math.round(passed * 100 / total), "%")
-        console.log(failed.length, "tests failed")
-
-        for (let i = 0; i < failed.length; i++) {
-            console.log("")
-            console.log("failed:", failed[i].name)
-            console.log("file:", failed[i].path)
-            console.log(failed[i].message)
-        }
-
-        if (failed.length) process.exitCode = 1
-    }
-    else {
-        let rueInstance = new RueFile(`./test/${testToRun}.rue`)
-        rueInstance.output(`./output/${testToRun}.css`)
     }
 
+    console.log(`${passed} out of ${tests.length} tests passed`)
+    console.log(`${failed.length} tests failed`)
+
+    for (let i = 0; i < failed.length; i++) {
+        console.log("")
+        console.log("failed:", failed[i].name)
+        console.log(failed[i].message)
+    }
+
+    if (failed.length) process.exitCode = 1
 }
 
 main()

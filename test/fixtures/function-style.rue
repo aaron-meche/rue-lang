@@ -1,0 +1,9 @@
+func rem(value) {
+    return value + "rem"
+}
+
+def space: rem(1.5)
+
+.box{
+    padding: rem(2)
+}

@@ -1,0 +1,9 @@
+.home-page{
+    color: royalblue
+}
+
+Interface {
+    new Wrapper("Home route", {
+        className: home-page
+    })
+}

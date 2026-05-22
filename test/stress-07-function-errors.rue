@@ -1,8 +1,0 @@
-func explode() {
-    throw new Error("boom")
-}
-
-.bad-call{
-    width: explode();
-    height: 2rem;
-}

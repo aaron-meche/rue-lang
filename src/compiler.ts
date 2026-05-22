@@ -53,7 +53,7 @@ export class RueFile {
         return
     }
 
-    feed(string: string, autoCompile?: boolean): void {
+    feed(string: string, autoCompile: boolean = true): void {
         if (typeof string == "string")
             this.#rawText = string
         else this.#throwError("Feed", "first argument expected type string, not type " + typeof string)

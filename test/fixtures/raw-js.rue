@@ -1,0 +1,7 @@
+{
+    window.__rueFixtureLoaded = true
+}
+
+Interface {
+    new Wrapper("Raw JS fixture")
+}

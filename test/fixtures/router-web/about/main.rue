@@ -1,0 +1,9 @@
+.about-page{
+    color: seagreen
+}
+
+Interface {
+    new Wrapper("About route", {
+        className: about-page
+    })
+}

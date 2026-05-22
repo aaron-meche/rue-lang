@@ -1,0 +1,23 @@
+component Heading(text) {
+    tag: h1
+    className: hero-title
+    font-size: 2rem
+    font-weight: 900
+    content: text
+}
+
+component IntroCard() {
+    display: grid
+    gap: 0.8rem
+    content: [
+        Heading("Rue")
+        new Wrapper("Build UI without raw HTML", {
+            color: #495057
+        })
+    ]
+}
+
+Interface {
+    IntroCard()
+    "Plain text output"
+}

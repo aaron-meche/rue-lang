@@ -1,0 +1,5 @@
+component MissingBrace()
+
+Interface {
+    new Wrapper("still parses")
+}
