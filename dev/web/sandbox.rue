@@ -1,0 +1,64 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+component GameCard(gameObj) {
+    let gameImgSrc = gameObj?.thumb ?? null
+    let gameTitle = gameObj?.title ?? "Empty Title"
+    let gameTags = gameObj?.tags ?? []
+
+    // Method 1
+    return new VStack({
+        padding: 0.8rem
+        border-radius: 1.6rem
+        content: [
+            new Image(gameImgSrc, {
+                width: 100%
+                aspect-ratio: 16 / 9
+                border-radius: 0.8rem
+            })
+            new ItemLabel(gameTitle)
+            new ItemDescr(gameTags.join(", "))
+        ]
+    })
+
+    // Method 2
+    return new VStack([
+        new Image(gameImgSrc, {
+            width: 100%
+            aspect-ratio: 16 / 9
+            border-radius: 0.8rem
+        })
+        new ItemLabel(gameTitle)
+        new ItemDescr(gameTags.join(", "))
+    ], {
+        padding: 0.8rem
+        border-radius: 1.6rem
+    })
+
+    // Method 3
+    return new VStack
+        padding: 0.8rem
+        border-radius: 1.6rem
+        new Image(gameImgSrc)
+            width: 100%
+            spect-ratio: 16 / 9
+            border-radius: 0.8rem
+        new ItemLabel(gameTitle)
+        new ItemDescr(gameTags.join(", "))
+}
