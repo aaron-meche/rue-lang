@@ -175,6 +175,21 @@ const tests: TestCase[] = [
         },
     },
     {
+        name: "component call config syntax",
+        run() {
+            let result = compileFixture("component-call-config.rue")
+            assertNoCompileErrors(result, "component call config")
+            assertIncludes(result.html, "Rue", "component call config")
+            assertIncludes(result.html, "padding:0.4rem 0.7rem;", "component call config")
+            assertIncludes(result.html, "border-radius:999px;", "component call config")
+            assertIncludes(result.html, "AB", "component call config")
+            assertIncludes(result.html, "Interface text", "component call config")
+            assertIncludes(result.html, "font-size:1.2rem;", "component call config")
+            assertIncludes(result.html, "Count: 3", "component call config")
+            assertIncludes(result.html, "__rueState.set(&quot;count&quot;", "component call config")
+        },
+    },
+    {
         name: "live state output",
         run() {
             let result = compileFixture("live-state.rue")
