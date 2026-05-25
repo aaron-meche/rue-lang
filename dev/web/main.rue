@@ -1,409 +1,122 @@
+
+
 //
-// Rue Showcase Home
+// Rue Programming Language
+//
+// Syntax Upgrades: May 23, 2026
+// "Method 3" Transition.
+//
+// This files explores specific
+// syntax differences between
+// the current "old" syntax,
+// and the new, transformative
+// syntax that is actively being
+// implemented into the Rue
+// programming language.
 //
 
-.hero-shell{
-    background: radial-gradient(circle at 18% 16%, rgba(25, 198, 167, 0.24), transparent 30rem), radial-gradient(circle at 84% 12%, rgba(255, 107, 74, 0.20), transparent 28rem), linear-gradient(180deg, #111315 0%, #181b1f 100%)
+// First, let's create a simple
+// component: Square Text
+// ...
+// This component will return
+// a simple UI Element that
+// contains the inputted text.
+
+// Old Syntax
+component SquareText(text) {
+    return new UIElement({
+        padding: 2.4rem
+        background: black
+        color: white
+        content: text
+    })
 }
 
-.hero-shell ::selection{
-    background: var(--accent)
-    color: var(--ink)
+// New Syntax
+component SquareText(text) {
+    new UIElement(text)
+        padding: 2.4rem
+        background: black
+        color: white
 }
 
-.section-title{
-    max-width: 720px
-}
+// We have restructured how RueUI
+// object instantiations are made
+// ...
+// In this new syntax, new elements
+// recieve their primary value as
+// the constructor call, and get
+// passed attributes (config)
+// as succeeding, indented lines
+// following the inital call. This
+// syntax change does introduce
+// intendatation rules to Rue.
+// ...
+// Additionally, components are
+// starting to further develop
+// their identity in Rue. Instead
+// of just being a reformatted
+// function, components entire 
+// bodies now define their return
+// values, removing the need to
+// define a "return" value.
+// ... 
+// All defined components
+// (including plain strings)
+// in a component's body will
+// be returned as an array that
+// will later be handled via
+// RueUI HTML conversions.
 
-.code-window{
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
-}
+//
+// --- --- ---
+//
 
-.code-window-line{
-    white-space: pre-wrap
-}
+// Next, let's define small
+// interfaces that displays
+// simple text to the screen.
 
-.pill-row{
-    display: flex
-    flex-wrap: wrap
-    gap: 0.6rem
-}
-
-.feature-card{
-    border: solid 1px var(--line)
-    background: var(--surface)
-    box-shadow: 0 24px 70px rgba(17, 19, 21, 0.07)
-}
-
-.feature-card:hover{
-    transform: translateY(-2px)
-    box-shadow: 0 28px 84px rgba(17, 19, 21, 0.10)
-}
-
-@state count = 4
-
-component Pill(text) {
-    border: solid 1px rgb(255 255 255 / 16%)
-    background: rgb(255 255 255 / 8%)
-    color: rgb(255 255 255 / 86%)
-    border-radius: 100vh
-    padding: 0.58rem 0.82rem
-    font-size: 0.86rem
-    font-weight: 720
-    content: text
-}
-
-component Dot(color) {
-    width: 0.68rem
-    height: 0.68rem
-    border-radius: 100vh
-    background: color
-    content: ""
-}
-
-component CodeLine(text, color = "inherit") {
-    className: code-window-line
-    color: color
-    content: text
-}
-
-component CodeHeader(label) {
-    display: flex
-    align-items: center
-    justify-content: space-between
-    gap: 1rem
-    padding: 0.86rem 1rem
-    border-bottom: solid 1px rgb(255 255 255 / 10%)
-    color: rgb(255 255 255 / 68%)
-    font-size: 0.78rem
-    content: [
-        new UIElement({
-            display: flex
-            gap: 0.42rem
-            content: [
-                Dot("#ff6b4a")
-                Dot("#f4b942")
-                Dot("#19c6a7")
-            ]
-        })
-        new Wrapper(label)
-    ]
-}
-
-component SectionIntro(title, body) {
-    className: section-title
-    display: grid
-    gap: 0.8rem
-    content: [
-        new Wrapper(title, {
-            font-size: clamp(2rem, 5vw, 4rem)
-            line-height: 1
-            font-weight: 900
-            letter-spacing: -0.055em
-        })
-        new Wrapper(body, {
-            color: var(--muted)
-            font-size: 1.05rem
-            line-height: 1.75
-        })
-    ]
-}
-
-component DarkSectionIntro(title, body) {
-    className: section-title
-    display: grid
-    gap: 0.8rem
-    content: [
-        new Wrapper(title, {
-            font-size: clamp(2rem, 5vw, 4rem)
-            line-height: 1
-            font-weight: 900
-            letter-spacing: -0.055em
-        })
-        new Wrapper(body, {
-            color: rgb(255 255 255 / 68%)
-            font-size: 1.05rem
-            line-height: 1.75
-        })
-    ]
-}
-
-component FeatureCard(title, body) {
-    className: feature-card
-    border-radius: 0.7rem
-    padding: 1.35rem
-    min-height: 13rem
-    transition: transform 140ms, box-shadow 140ms
-    content: [
-        new Wrapper(title, {
-            font-size: 1.08rem
-            font-weight: 850
-            letter-spacing: -0.02em
-        })
-        new Wrapper(body, {
-            margin-top: 0.75rem
-            color: var(--muted)
-            font-size: 0.96rem
-            line-height: 1.65
-        })
-    ]
-}
-
-component HeroCopy() {
-    display: grid
-    gap: 1.4rem
-    align-content: center
-    content: [
-        new Wrapper("Rue", {
-            font-size: clamp(4rem, 11vw, 9rem)
-            line-height: 0.88
-            font-weight: 950
-            letter-spacing: -0.07em
-        })
-        new Wrapper("A compact language experiment for building web interfaces from readable Rue files", {
-            max-width: 650px
-            color: rgb(255 255 255 / 82%)
-            font-size: clamp(1rem, 3vw, 2rem)
-            line-height: 1.22
-            font-weight: 520
-        })
-        new Wrapper("Rue combines CSS-like styling JavaScript-powered components live state and file-based routing into one small compiler", {
-            max-width: 620px
-            color: rgb(255 255 255 / 64%)
-            font-size: 1.05rem
-            line-height: 1.75
-        })
-        new UIElement({
-            className: pill-row
-            margin-top: 0.6rem
-            content: [
-                Pill("Rue files")
-                Pill("UIElement runtime")
-                Pill("Live state")
-                Pill("File routes")
-            ]
-        })
-    ]
-}
-
-component HeroCodePanel() {
-    className: code-window
-    border: solid 1px rgb(255 255 255 / 13%)
-    background: rgb(8 10 12 / 78%)
-    border-radius: 0.8rem
-    overflow: hidden
-    box-shadow: 0 38px 100px rgb(0 0 0 / 42%)
-    content: [
-        CodeHeader("dev web main rue")
-        new UIElement({
-            padding: 1.25rem
-            display: grid
-            gap: 0.45rem
-            font-size: 0.92rem
-            line-height: 1.58
-            content: [
-                CodeLine("component Hero() {", "#8be9fd")
-                CodeLine("    display: grid", "#f8f8f2")
-                CodeLine("    gap: 1rem", "#f8f8f2")
-                CodeLine("    content: [", "#f8f8f2")
-                CodeLine("        new Wrapper(\"Build without HTML\")", "#f1fa8c")
-                CodeLine("        CounterButton()", "#50fa7b")
-                CodeLine("    ]", "#f8f8f2")
-                CodeLine("}", "#8be9fd")
-            ]
-        })
-    ]
-}
-
-component LiveStateDemo() {
-    border: solid 1px rgb(255 255 255 / 12%)
-    background: rgb(255 255 255 / 7%)
-    border-radius: 0.8rem
-    padding: 1.2rem
-    display: grid
-    gap: 1rem
-    content: [
-        new Wrapper("Live state demo", {
-            color: rgb(255 255 255 / 62%)
-            font-size: 0.82rem
-            font-weight: 780
-            text-transform: uppercase
-            letter-spacing: 0.08em
-        })
-        new UIElement({
-            border-radius: 0.65rem
-            background: rgb(255 255 255 / 8%)
-            padding: 1.3rem
-            display: grid
-            gap: 0.9rem
-            content: [
-                new Wrapper("Counter value", {
-                    color: rgb(255 255 255 / 62%)
-                    font-size: 0.92rem
-                })
-                new UIElement({
-                    font-size: 4rem
-                    line-height: 1
-                    font-weight: 900
-                    content: () => {
-                        return @count
-                    }
-                })
-                new Button("Increment count", {
-                    width: fit-content
-                    background: var(--accent)
-                    color: #07110f
-                    border-radius: 0.45rem
-                    padding: 0.78rem 1rem
-                    font-weight: 800
-                    cursor: pointer
-                    onclick: () => {
-                        @count++
-                    }
-                })
-            ]
-        })
-    ]
-}
-
-component RoadmapItem(number, title, body) {
-    display: grid
-    grid-template-columns: auto minmax(0, 1fr)
-    gap: 1rem
-    align-items: start
-    border-top: solid 1px var(--line)
-    padding: 1.1rem 0
-    content: [
-        new Wrapper(number, {
-            width: 2rem
-            height: 2rem
-            border-radius: 100vh
-            background: var(--ink)
-            color: white
-            display: flex
-            align-items: center
-            justify-content: center
-            font-weight: 850
-        })
-        new UIElement({
-            display: grid
-            gap: 0.35rem
-            content: [
-                new Wrapper(title, {
-                    font-weight: 850
-                    font-size: 1.04rem
-                })
-                new Wrapper(body, {
-                    color: var(--muted)
-                    line-height: 1.6
-                })
-            ]
-        })
-    ]
-}
-
-component HeroSection() {
-    className: hero-shell
-    color: white
-    content: [
-        new UIElement({
-            max-width: 1180px
-            min-height: 82vh
-            margin: 0 auto
-            padding: 7.2rem 1.4rem 4.8rem
-            display: grid
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
-            gap: 3.4rem
-            align-items: center
-            content: [
-                HeroCopy()
-                HeroCodePanel()
-            ]
-        })
-    ]
-}
-
-component SyntaxSection() {
-    id: syntax
-    content: [
-        new UIElement({
-            max-width: 1180px
-            margin: 0 auto
-            padding: 6rem 1.4rem
-            display: grid
-            gap: 2.6rem
-            content: [
-                SectionIntro("Designed around the file you actually edit", "Rue keeps page structure component config and styling close together while the current compiler favors small readable blocks over framework ceremony")
-                new UIElement({
-                    display: grid
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))
-                    gap: 1rem
-                    content: [
-                        FeatureCard("CSS-like config", "Write UI style values without quoting every CSS token and compile hyphenated CSS properties into runtime styles")
-                        FeatureCard("Component syntax", "A component body is the UIElement config and calling the component returns a real UIElement instance")
-                        FeatureCard("Ordered Interface", "The Interface block is the page output array and elements render in the order they are written")
-                    ]
-                })
-            ]
-        })
-    ]
-}
-
-component RuntimeSection() {
-    id: runtime
-    background: #111315
-    color: white
-    content: [
-        new UIElement({
-            max-width: 1180px
-            margin: 0 auto
-            padding: 6.2rem 1.4rem
-            display: grid
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
-            gap: 2rem
-            align-items: center
-            content: [
-                DarkSectionIntro("A compiler plus a tiny UI runtime", "Rue currently turns Interface output into HTML using UIElement classes while live state can update rendered content without a larger app framework")
-                LiveStateDemo()
-            ]
-        })
-    ]
-}
-
-component RoadmapSection() {
-    id: roadmap
-    content: [
-        new UIElement({
-            max-width: 1180px
-            margin: 0 auto
-            padding: 6rem 1.4rem 7rem
-            display: grid
-            gap: 2.4rem
-            content: [
-                SectionIntro("Built to become a real UI package", "This page is a first homepage draft and the next useful work is turning the language runtime router docs and editor support into one coherent developer experience")
-                new UIElement({
-                    display: grid
-                    gap: 0.8rem
-                    content: [
-                        RoadmapItem("1", "Stabilize component parsing", "Keep the component body simple predictable and easy to debug")
-                        RoadmapItem("2", "Expand runtime primitives", "Promote common layout image button and text patterns into clear Rue UI primitives")
-                        RoadmapItem("3", "Improve editor feedback", "Use compiler diagnostics to surface syntax errors directly inside Rue files")
-                    ]
-                })
-            ]
-        })
-    ]
-}
-
-component Page() {
-    content: [
-        HeroSection()
-        SyntaxSection()
-        RuntimeSection()
-        RoadmapSection()
-    ]
-}
-
+// Old Syntax
 Interface {
-    Page()
+    new UIElement({
+        content: "Hi"
+        font-size: 1.2rem
+        font-weight: 600
+    })
+    // new Component({ 
+    //      value,
+    //      ...config 
+    // })
 }
+
+// New Syntax
+Interface {
+    new UIElement("Hi")
+        font-size: 1.2rem
+        font-weight: 600
+    // new Component(value)
+    //      ...config
+}
+
+// Notice the changes in how
+// object instantiations are made
+// ...
+// RueUI changes should not be
+// necessary to implement these
+// syntax changes. I have just created
+// a new class that is exported from
+// interface.ts named "Component"
+// ...
+// It takes two inputs, content and
+// config. It is possible to modify the
+// Rue syntax to follow the default format
+// for RueUI element types: (main val, config)
+// ...
+// For example new VStack takes 
+// (array of elements, config))
+// ...
+// The default text display component in Rue
+// is now the new Component(val) ... a change
+// that is needed is the ability to detect
+// succeeding attribute lines, and to apply them
+// to object instantiation config value.

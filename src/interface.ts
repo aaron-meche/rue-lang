@@ -325,6 +325,15 @@ export class Rectangle extends UIElement {
     }
 }
 
+export class Component extends UIElement {
+    constructor(content: unknown, config: UIConfig = {}) {
+        super({
+            ...config,
+            content: content
+        })
+    }
+}
+
 export class HStack extends UIElement {
     constructor(elements: UIContent[], config: UIConfig = {}) {
         super({
