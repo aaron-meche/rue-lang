@@ -357,7 +357,8 @@ export class RueFile {
     }
 
     #hasTopLevelReturn(lines: RueCapturedLine[]): boolean {
-        let baseIndent = this.#baseIndent(lines)
+        if (!lines.length) return false
+        let baseIndent = Math.min(...lines.map(line => line.indent))
         return lines.some(line => line.indent == baseIndent && line.text.startsWith("return "))
     }
 
@@ -442,7 +443,7 @@ export class RueFile {
         if (!call) return this.#prepareCapturedBlock(callLines, 1, knownNames)
 
         let configBody = this.#prepareCapturedBlock(configLines, 1, knownNames)
-        let args = this.#resolveStateReferences(call.args.trim())
+        let args = this.#compileRueCallArgs(call.name, callLines, knownNames)
 
         if (call.name == "UIElement") {
             let contentLine = args ? [`content: ${args},`] : []
@@ -453,6 +454,22 @@ export class RueFile {
             return [`new Rectangle({`, ...configBody, `}),`]
 
         return [`new ${call.name}(${args}${args ? ", " : ""}{`, ...configBody, `}),`]
+    }
+
+    #compileRueCallArgs(name: string, lines: RueCapturedLine[], knownNames: string[]): string {
+        if (lines.length == 1) {
+            let call = this.#parseRueNewExpression(lines)
+            return this.#resolveStateReferences(call?.args.trim() ?? "")
+        }
+
+        let firstLine = lines[0].text.replace(new RegExp(`^new\\s+${name}\\s*\\(`), "")
+        let lastLine = lines[lines.length - 1].text.replace(/\)$/, "")
+        let argLines = lines.map(line => ({ ...line }))
+
+        argLines[0].text = firstLine.trim()
+        argLines[argLines.length - 1].text = lastLine.trim()
+
+        return this.#prepareCapturedBlock(argLines.filter(line => line.text), 2, knownNames).join("\n")
     }
 
     #hasRueOutputBody(lines: RueCapturedLine[], knownNames: string[]): boolean {
@@ -496,35 +513,19 @@ export class RueFile {
         return whitespace.replaceAll("\t", "    ").length
     }
 
-    #baseIndent(lines: RueCapturedLine[]): number {
-        return Math.min(...lines.map(line => line.indent))
-    }
-
     #countExpressionDepth(value: string): number {
-        let quote: string | null = null
-        let escaped = false
-        let depth = 0
-
-        for (let i = 0; i < value.length; i++) {
-            let char = value[i]
-
-            if (escaped) { escaped = false; continue }
-            if (char == "\\") { escaped = true; continue }
-            if (quote && char == quote) { quote = null; continue }
-            if (!quote && (char == "\"" || char == "'" || char == "`")) { quote = char; continue }
-            if (quote) continue
-
-            if (char == "(" || char == "[" || char == "{") depth++
-            else if (char == ")" || char == "]" || char == "}") depth--
-        }
-
-        return depth
+        return this.#scanExpression(value).depth
     }
 
     #hasTopLevelComma(value: string): boolean {
+        return this.#scanExpression(value).hasTopLevelComma
+    }
+
+    #scanExpression(value: string): { depth: number, hasTopLevelComma: boolean } {
         let quote: string | null = null
         let escaped = false
         let depth = 0
+        let hasTopLevelComma = false
 
         for (let i = 0; i < value.length; i++) {
             let char = value[i]
@@ -537,10 +538,10 @@ export class RueFile {
 
             if (char == "(" || char == "[" || char == "{") depth++
             else if (char == ")" || char == "]" || char == "}") depth--
-            else if (char == "," && depth == 0) return true
+            else if (char == "," && depth == 0) hasTopLevelComma = true
         }
 
-        return false
+        return { depth, hasTopLevelComma }
     }
 
     #prepareBlockLine(line: string, depth: number, commaDepth: number, knownNames: string[]): string {
@@ -554,7 +555,7 @@ export class RueFile {
         if (line.endsWith("{") || line.endsWith("[")) return hadComma ? line + "," : line
         if (line.startsWith("let ") || line.startsWith("const ") || line.startsWith("var ")) return line
         if (line.includes("=") && !line.includes("=>")) return line
-        if (line.includes(".") && line.includes("(") && !line.startsWith("new ")) return line
+        if (/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\s*\(/.test(line)) return line
 
         if (line.includes(":"))
             line = this.#prepareObjectProperty(line, knownNames)
