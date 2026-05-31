@@ -85,27 +85,14 @@ var __rueState = window.__rueState;
 
 export function stripLineComment(line: string): string {
     let commentIndex = line.indexOf("//")
-
     if (commentIndex == -1) return line
 
-    let beforeComment = line.slice(0, commentIndex)
-    if (!/[\\'"`]/.test(beforeComment)) return beforeComment
-
-    let quote: string | null = null
-    let escaped = false
-
-    for (let i = 0; i < line.length - 1; i++) {
-        let char = line[i]
-        let nextChar = line[i + 1]
-
-        if (escaped) { escaped = false; continue }
-        if (char == "\\") { escaped = true; continue }
-        if (quote && char == quote) { quote = null; continue }
-        if (!quote && (char == "\"" || char == "'" || char == "`")) { quote = char; continue }
-        if (!quote && char == "/" && nextChar == "/") return line.slice(0, i)
+    while (line[commentIndex - 1] == ":") {
+        commentIndex = line.indexOf("//", commentIndex + 2)
+        if (commentIndex == -1) return line
     }
 
-    return line
+    return line.slice(0, commentIndex)
 }
 
 export function ensureSemicolon(line: string): string {

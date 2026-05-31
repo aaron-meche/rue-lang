@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import runRue, { RueFile, RueRouter, ruePlugin, ruePreprocess } from "./src/index.js";
+import { stripLineComment } from "./src/helpers.js";
 
 interface CompileResult {
     css: string
@@ -142,6 +143,17 @@ const tests: TestCase[] = [
     {
         name: "package integrations",
         run: runPackageIntegrationTests,
+    },
+    {
+        name: "line comments preserve urls",
+        run() {
+            assert.equal(stripLineComment("plain text"), "plain text")
+            assert.equal(stripLineComment("// full line comment"), "")
+            assert.equal(stripLineComment("color: red // comment"), "color: red ")
+            assert.equal(stripLineComment("Link(\"https://example.com\")"), "Link(\"https://example.com\")")
+            assert.equal(stripLineComment("Link(\"https://example.com\") // comment"), "Link(\"https://example.com\") ")
+            assert.equal(stripLineComment("Link(\"https://one.test\", \"https://two.test\") // comment"), "Link(\"https://one.test\", \"https://two.test\") ")
+        },
     },
     {
         name: "css styles and defs",
