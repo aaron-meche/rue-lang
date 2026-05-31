@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document</title>
+<style>
+:root{
+	--bg: hsl(264 28% 8% / 1);
+	--bg-soft: hsl(266 30% 11% / 1);
+	--bg-wash: hsl(269 38% 15% / 1);
+	--surface: hsl(264 26% 14% / 0.9);
+	--surface-strong: hsl(264 24% 18% / 1);
+	--surface-muted: hsl(263 22% 22% / 0.82);
+	--border: hsl(263 20% 29% / 1);
+	--border-strong: hsl(263 26% 42% / 1);
+	--text: hsl(262 42% 96% / 1);
+	--text-soft: hsl(263 26% 84% / 1);
+	--muted: hsl(263 16% 67% / 1);
+	--accent: hsl(263 76% 76% / 1);
+	--accent-hover: hsl(263 88% 83% / 1);
+	--accent-soft: hsl(263 36% 24% / 1);
+	--focus: hsl(263 96% 72% / 0.46);
+	--success: hsl(158 58% 62% / 1);
+	--warning: hsl(42 96% 66% / 1);
+	--danger: hsl(350 84% 72% / 1);
+	--shadow: hsl(264 60% 4% / 0.46);
+	--l0: var(--bg);
+	--l1: var(--surface);
+}
+body{
+	margin: 0;
+	min-height: 100vh;
+	background: var(--bg);
+	color: var(--text);
+	font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+*{
+	box-sizing: border-box;
+}
+::selection{
+	background: var(--accent-soft);
+	color: var(--text);
+}
+</style>
+</head>
+<body>
+<div style="padding:1.2rem;border-bottom:solid 1pt var(--surface);">Search Bar</div>
+
+</body>
+</html>
