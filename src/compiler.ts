@@ -32,6 +32,12 @@ export interface RueFunctionDefinition {
     function: RueCallable
 }
 
+interface RueCapturedLine {
+    text: string
+    indent: number
+    depth: number
+}
+
 //
 // Main RueFile Class
 export class RueFile {
@@ -253,10 +259,11 @@ export class RueFile {
         let localNames = signature.params.map(param => param.split("=")[0].trim())
         let knownNames = [...localNames, ...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime), "__rueState"]
         let isComponent = firstWord == "component"
-        let body = this.#captureBlock(lines, startIndex, isComponent ? 1 : 2, knownNames)
+        let capturedLines = this.#captureBlockLines(lines, startIndex)
+        let body = isComponent
+            ? this.#compileComponentBody(capturedLines, knownNames)
+            : this.#prepareCapturedBlock(capturedLines, 2, knownNames)
 
-        if (isComponent)
-            body = ["return new UIElement({", ...body, "})"]
 
         try {
             let context = this.#buildRunnableContext()
@@ -283,7 +290,7 @@ export class RueFile {
         if (!startLine.includes("{")) { this.#throwError("Interface", "missing opening brace"); return }
 
         let knownNames = [...Object.keys(this.#funcMap), ...Object.keys(RueUIRuntime), "__rueState"]
-        let body = this.#captureBlock(lines, startIndex, 1, knownNames)
+        let body = this.#compileRueOutputBody(this.#captureBlockLines(lines, startIndex), knownNames)
 
         try {
             let context = this.#buildRunnableContext()
@@ -306,13 +313,14 @@ export class RueFile {
         }
     }
 
-    #captureBlock(lines: string[], startIndex: number, commaDepth: number = 2, knownNames: string[] = []): string[] {
-        let body: string[] = []
+    #captureBlockLines(lines: string[], startIndex: number): RueCapturedLine[] {
+        let body: RueCapturedLine[] = []
         let startLine = stripLineComment(lines[startIndex]).trim()
         let depth = countRueScopeDepth(startLine)
 
         for (let i = startIndex + 1; i < lines.length; i++) {
-            let currLine = stripLineComment(lines[i]).trim()
+            let rawLine = stripLineComment(lines[i])
+            let currLine = rawLine.trim()
             if (!currLine) continue
 
             let nextDepth = depth + countRueScopeDepth(currLine)
@@ -321,13 +329,219 @@ export class RueFile {
                 return body
             }
 
-            body.push(this.#prepareBlockLine(currLine, nextDepth, commaDepth, knownNames))
+            body.push({
+                text: currLine,
+                indent: this.#countIndent(rawLine),
+                depth: nextDepth
+            })
             depth = nextDepth
         }
 
         this.#currLineIndex = lines.length - 1
         this.#throwError("Parse", "unclosed block")
         return body
+    }
+
+    #prepareCapturedBlock(lines: RueCapturedLine[], commaDepth: number, knownNames: string[]): string[] {
+        return lines.map(line => this.#prepareBlockLine(line.text, line.depth, commaDepth, knownNames))
+    }
+
+    #compileComponentBody(lines: RueCapturedLine[], knownNames: string[]): string[] {
+        if (this.#hasTopLevelReturn(lines))
+            return this.#prepareCapturedBlock(lines, 2, knownNames)
+
+        if (this.#hasRueOutputBody(lines, knownNames))
+            return this.#compileRueReturnBody(lines, knownNames)
+
+        return ["return new UIElement({", ...this.#prepareCapturedBlock(lines, 1, knownNames), "})"]
+    }
+
+    #hasTopLevelReturn(lines: RueCapturedLine[]): boolean {
+        if (!lines.length) return false
+        let baseIndent = Math.min(...lines.map(line => line.indent))
+        return lines.some(line => line.indent == baseIndent && line.text.startsWith("return "))
+    }
+
+    #compileRueReturnBody(lines: RueCapturedLine[], knownNames: string[]): string[] {
+        let setupLines: RueCapturedLine[] = []
+        let outputLines: RueCapturedLine[] = []
+        let outputStarted = false
+
+        for (let i = 0; i < lines.length; i++) {
+            if (!outputStarted && this.#isSetupLine(lines[i].text)) {
+                setupLines.push(lines[i])
+                continue
+            }
+
+            outputStarted = true
+            outputLines.push(lines[i])
+        }
+
+        return [
+            ...this.#prepareCapturedBlock(setupLines, 2, knownNames),
+            "return ([",
+            ...this.#compileRueOutputBody(outputLines, knownNames),
+            "])"
+        ]
+    }
+
+    #compileRueOutputBody(lines: RueCapturedLine[], knownNames: string[]): string[] {
+        let body: string[] = []
+
+        for (let i = 0; i < lines.length; i++) {
+            let callEndIndex = this.#findRueNewCallEnd(lines, i)
+            let configEndIndex = this.#findAttachedConfigEnd(lines, i, callEndIndex)
+
+            if (configEndIndex > callEndIndex) {
+                body.push(...this.#compileAttachedConfigCall(
+                    lines.slice(i, callEndIndex + 1),
+                    lines.slice(callEndIndex + 1, configEndIndex + 1),
+                    knownNames
+                ))
+                i = configEndIndex
+                continue
+            }
+
+            body.push(this.#prepareBlockLine(lines[i].text, lines[i].depth, 1, knownNames))
+        }
+
+        return body
+    }
+
+    #findRueNewCallEnd(lines: RueCapturedLine[], callIndex: number): number {
+        if (!this.#startsRueNewCall(lines[callIndex].text)) return callIndex
+
+        let depth = 0
+        for (let i = callIndex; i < lines.length; i++) {
+            depth += this.#countExpressionDepth(lines[i].text)
+            if (depth <= 0) return i
+        }
+
+        return callIndex
+    }
+
+    #findAttachedConfigEnd(lines: RueCapturedLine[], callIndex: number, callEndIndex: number): number {
+        let call = this.#parseRueNewExpression(lines.slice(callIndex, callEndIndex + 1))
+        if (!call || this.#hasTopLevelComma(call.args)) return callIndex
+
+        let firstConfigLine = lines[callEndIndex + 1]
+        if (!firstConfigLine) return callIndex
+        if (firstConfigLine.indent <= lines[callIndex].indent) return callIndex
+        if (!this.#isConfigLine(firstConfigLine.text)) return callIndex
+
+        let endIndex = callEndIndex + 1
+        for (let i = callEndIndex + 2; i < lines.length; i++) {
+            if (lines[i].indent <= lines[callIndex].indent) break
+            endIndex = i
+        }
+
+        return endIndex
+    }
+
+    #compileAttachedConfigCall(callLines: RueCapturedLine[], configLines: RueCapturedLine[], knownNames: string[]): string[] {
+        let call = this.#parseRueNewExpression(callLines)
+        if (!call) return this.#prepareCapturedBlock(callLines, 1, knownNames)
+
+        let configBody = this.#prepareCapturedBlock(configLines, 1, knownNames)
+        let args = this.#compileRueCallArgs(call.name, callLines, knownNames)
+
+        if (call.name == "UIElement") {
+            let contentLine = args ? [`content: ${args},`] : []
+            return [`new UIElement({`, ...contentLine, ...configBody, `}),`]
+        }
+
+        if (call.name == "Rectangle" && !args)
+            return [`new Rectangle({`, ...configBody, `}),`]
+
+        return [`new ${call.name}(${args}${args ? ", " : ""}{`, ...configBody, `}),`]
+    }
+
+    #compileRueCallArgs(name: string, lines: RueCapturedLine[], knownNames: string[]): string {
+        if (lines.length == 1) {
+            let call = this.#parseRueNewExpression(lines)
+            return this.#resolveStateReferences(call?.args.trim() ?? "")
+        }
+
+        let firstLine = lines[0].text.replace(new RegExp(`^new\\s+${name}\\s*\\(`), "")
+        let lastLine = lines[lines.length - 1].text.replace(/\)$/, "")
+        let argLines = lines.map(line => ({ ...line }))
+
+        argLines[0].text = firstLine.trim()
+        argLines[argLines.length - 1].text = lastLine.trim()
+
+        return this.#prepareCapturedBlock(argLines.filter(line => line.text), 2, knownNames).join("\n")
+    }
+
+    #hasRueOutputBody(lines: RueCapturedLine[], knownNames: string[]): boolean {
+        for (let i = 0; i < lines.length; i++) {
+            if (this.#isSetupLine(lines[i].text)) continue
+            return this.#isRueOutputLine(lines[i].text, knownNames)
+        }
+
+        return false
+    }
+
+    #isRueOutputLine(line: string, knownNames: string[]): boolean {
+        if (line.startsWith("new ")) return true
+        if (/^["'`]/.test(line)) return true
+
+        let callName = line.match(/^([A-Za-z_$][\w$]*)\s*\(/)?.[1]
+        return callName != undefined && knownNames.includes(callName)
+    }
+
+    #isSetupLine(line: string): boolean {
+        return line.startsWith("let ") || line.startsWith("const ") || line.startsWith("var ")
+    }
+
+    #isConfigLine(line: string): boolean {
+        return line.includes(":") || line.startsWith("...")
+    }
+
+    #startsRueNewCall(line: string): boolean {
+        return /^new\s+[A-Za-z_$][\w$]*\s*\(/.test(line)
+    }
+
+    #parseRueNewExpression(lines: RueCapturedLine[]): { name: string, args: string } | null {
+        let expression = lines.map(line => line.text).join("\n")
+        let match = expression.match(/^new\s+([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/)
+        if (!match) return null
+        return { name: match[1], args: match[2] }
+    }
+
+    #countIndent(line: string): number {
+        let whitespace = line.match(/^[\t ]*/)?.[0] ?? ""
+        return whitespace.replaceAll("\t", "    ").length
+    }
+
+    #countExpressionDepth(value: string): number {
+        return this.#scanExpression(value).depth
+    }
+
+    #hasTopLevelComma(value: string): boolean {
+        return this.#scanExpression(value).hasTopLevelComma
+    }
+
+    #scanExpression(value: string): { depth: number, hasTopLevelComma: boolean } {
+        let quote: string | null = null
+        let escaped = false
+        let depth = 0
+        let hasTopLevelComma = false
+
+        for (let i = 0; i < value.length; i++) {
+            let char = value[i]
+
+            if (escaped) { escaped = false; continue }
+            if (char == "\\") { escaped = true; continue }
+            if (quote && char == quote) { quote = null; continue }
+            if (!quote && (char == "\"" || char == "'" || char == "`")) { quote = char; continue }
+            if (quote) continue
+
+            if (char == "(" || char == "[" || char == "{") depth++
+            else if (char == ")" || char == "]" || char == "}") depth--
+            else if (char == "," && depth == 0) hasTopLevelComma = true
+        }
+
+        return { depth, hasTopLevelComma }
     }
 
     #prepareBlockLine(line: string, depth: number, commaDepth: number, knownNames: string[]): string {
@@ -341,7 +555,7 @@ export class RueFile {
         if (line.endsWith("{") || line.endsWith("[")) return hadComma ? line + "," : line
         if (line.startsWith("let ") || line.startsWith("const ") || line.startsWith("var ")) return line
         if (line.includes("=") && !line.includes("=>")) return line
-        if (line.includes(".") && line.includes("(") && !line.startsWith("new ")) return line
+        if (/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\s*\(/.test(line)) return line
 
         if (line.includes(":"))
             line = this.#prepareObjectProperty(line, knownNames)

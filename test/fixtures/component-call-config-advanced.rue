@@ -1,0 +1,46 @@
+@state count = 1
+
+.action-button {
+    border: solid 1px black
+}
+
+component StateOnly() {
+    new Component(() => {
+        return "Live: " + @count
+    })
+}
+
+component MediaTile(src, title) {
+    new Component([
+        new Image(src)
+        new Component(title)
+    ])
+        display: grid
+        gap: 0.5rem
+        attrs: {
+            role: "group"
+        }
+}
+
+component ActionButton() {
+    new Button("Add")
+        className: action-button
+        onclick: () => {
+            @count++
+        }
+}
+
+Interface {
+    StateOnly()
+    MediaTile("cover.png", "Cover")
+    ActionButton()
+
+    new Rectangle()
+        width: 3rem
+        height: 2rem
+        background: #111
+
+    new Component("Preconfigured", {
+        color: "purple"
+    })
+}

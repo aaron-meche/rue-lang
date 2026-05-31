@@ -1,0 +1,38 @@
+@state count = 3
+
+component Badge(text) {
+    new Component(text)
+        padding: 0.4rem 0.7rem
+        background: black
+        color: white
+        border-radius: 999px
+}
+
+component CounterLabel() {
+    let label = "Count: "
+
+    new Component(() => {
+        return label + @count
+    })
+        font-size: 2rem
+        font-weight: 800
+
+    new Button("Increment")
+        onclick: () => {
+            @count++
+        }
+}
+
+Interface {
+    Badge("Rue")
+
+    new Component(["A", "B"])
+        display: grid
+        gap: 0.25rem
+
+    new UIElement("Interface text")
+        font-size: 1.2rem
+        font-weight: 600
+
+    CounterLabel()
+}

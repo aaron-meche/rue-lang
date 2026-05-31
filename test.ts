@@ -175,6 +175,38 @@ const tests: TestCase[] = [
         },
     },
     {
+        name: "component call config syntax",
+        run() {
+            let result = compileFixture("component-call-config.rue")
+            assertNoCompileErrors(result, "component call config")
+            assertIncludes(result.html, "Rue", "component call config")
+            assertIncludes(result.html, "padding:0.4rem 0.7rem;", "component call config")
+            assertIncludes(result.html, "border-radius:999px;", "component call config")
+            assertIncludes(result.html, "AB", "component call config")
+            assertIncludes(result.html, "Interface text", "component call config")
+            assertIncludes(result.html, "font-size:1.2rem;", "component call config")
+            assertIncludes(result.html, "Count: 3", "component call config")
+            assertIncludes(result.html, "__rueState.set(&quot;count&quot;", "component call config")
+        },
+    },
+    {
+        name: "advanced component call config syntax",
+        run() {
+            let result = compileFixture("component-call-config-advanced.rue")
+            assertNoCompileErrors(result, "advanced component call config")
+            assertIncludes(result.css, ".action-button{\n\tborder: solid 1px black;", "advanced component call config")
+            assertIncludes(result.html, "Live: 1", "advanced component call config")
+            assertIncludes(result.html, "live_state=\"state_0\"", "advanced component call config")
+            assertIncludes(result.html, "<img src=\"cover.png\"", "advanced component call config")
+            assertIncludes(result.html, "role=\"group\"", "advanced component call config")
+            assertIncludes(result.html, "Cover", "advanced component call config")
+            assertIncludes(result.html, "class=\"action-button\"", "advanced component call config")
+            assertIncludes(result.html, "__rueState.set(&quot;count&quot;", "advanced component call config")
+            assertIncludes(result.html, "width:3rem;height:2rem;background:#111;", "advanced component call config")
+            assertIncludes(result.html, "color:purple;", "advanced component call config")
+        },
+    },
+    {
         name: "live state output",
         run() {
             let result = compileFixture("live-state.rue")
