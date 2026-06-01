@@ -1,0 +1,35 @@
+//
+// remaking progressive website
+// with idealized syntax
+//
+
+Interface {
+    NavigationBar()
+    new Elem {
+        className: page-body
+        margin: 6rem var(--inline-moat)
+        new PageLabel("Confirmation")
+        new PageTitle("You've made a policy change!")
+        new SuccessBar()
+        new Markdown("Step 5 of 5: **You've completed all the steps.**")
+        new Elem {
+            className: breakcrum-wrapper
+            content: [
+                new Elem {
+                    className: breakcrum
+                    content: "Home"
+                }
+                new Elem { className: circlePad }
+                new Elem {
+                    className: breakcrum
+                    content: "Policy and Coverages"
+                }
+                new Elem { className: circlePad }
+                new Elem {
+                    className: breakcrum inactive
+                    content: "Add a Driver"
+                }
+            ]
+        }
+    }
+}
