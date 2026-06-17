@@ -1,7 +1,7 @@
 {
 	"name": "rue-lang",
 	"version": "2.0.0",
-	"description": "Rue Stylesheet Language, css with nested styles, better variables, and JS integration",
+	"description": "Rue Language, css with nested styles, better variables, and JS integration",
 	"keywords": [
 		"rue",
 		"css",
@@ -27,10 +27,6 @@
 		".": {
 			"types": "./dist/src/index.d.ts",
 			"import": "./dist/src/index.js"
-		},
-		"./vite-plugin": {
-			"types": "./dist/src/vite-plugin.d.ts",
-			"import": "./dist/src/vite-plugin.js"
 		},
 		"./interface": {
 			"types": "./dist/src/interface.d.ts",

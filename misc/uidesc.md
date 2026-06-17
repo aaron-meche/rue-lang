@@ -1,3 +1,7 @@
+# Historical UI Description Experiment
+
+Historical note. Use `projects/rue-lang/README.md` as the current behavior/source-of-truth for Rue. This file preserves an early declarative UI syntax experiment.
+
 //
 // uidesc.rue
 //

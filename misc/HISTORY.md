@@ -1,5 +1,7 @@
 # The History of the Rue Programming Language
 
+Historical note. Use `projects/rue-lang/README.md` as the current behavior/source-of-truth for Rue. This file preserves background context and earlier language attempts.
+
 authored by Aaron Meche, the Rue Language was not my first attempt at developing a custom syntax UI development language.
 
 ## All Versions

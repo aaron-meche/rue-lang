@@ -1,5 +1,7 @@
 # Rue Method 3 Syntax Assessment
 
+Proposal note. Use `projects/rue-lang/README.md` as the current behavior/source-of-truth for Rue. This file describes a possible future syntax direction and should not be presented as implemented unless the source code confirms it.
+
 This note assesses the proposed "method 3" component syntax from `dev/web/sandbox.rue` and the compiler/runtime changes Rue would need to support it well.
 
 ## Current Syntax
@@ -483,4 +485,3 @@ Method 3 is worth pursuing.
 It makes Rue better for authors and gives the language a stronger identity. It does not make the compiler simpler immediately. It makes the compiler more complex unless the implementation introduces a small tree parser and avoids cramming the feature into the current line-preparation path.
 
 The right tradeoff is to accept a little more compiler structure in exchange for a much cleaner Rue authoring model.
-
