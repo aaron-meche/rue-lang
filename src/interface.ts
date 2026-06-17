@@ -1,23 +1,23 @@
 //
-// Rue UI Runtime
+// interface.ts
 //
-// TypeScript transition of the Ginger UI browser interface classes.
+// RueUI UIElement Class
 //
 
-type UIValue = unknown
-type UIContent = UIValue | UIContent[]
-type UIConfig = Record<string, UIValue>
-type UIHandler = (elem: HTMLElement) => void
-type StateRenderer = () => UIContent
+export type UIValue = unknown
+export type UIContent = UIValue | UIContent[]
+export type UIConfig = Record<string, UIValue>
+export type UIHandler = (elem: HTMLElement) => void
+export type StateRenderer = () => UIContent
 
-interface GingerUIRegistry {
+export interface RueUIRegistry {
     handlers: Map<string, UIHandler>
     hoverState: Map<string, string>
 }
 
 declare global {
     interface Window {
-        gingerUIRegistry?: GingerUIRegistry
+        rueUIRegistry?: RueUIRegistry
         clickRegistry?: Map<string, UIHandler>
         dispatchClick?: (id: string, elem: HTMLElement) => void
         dispatchHover?: (id: string, elem: HTMLElement) => void
@@ -25,8 +25,8 @@ declare global {
     }
 }
 
-let stateManager: Record<string, StateRenderer> = {}
-let stateRendererCounter = 0
+export let stateManager: Record<string, StateRenderer> = {}
+export let stateRendererCounter = 0
 
 export function getStateRenderers(): Record<string, string> {
     let renderers: Record<string, string> = {}
@@ -61,7 +61,7 @@ const attributeKeys = new Set([
     "tabindex"
 ])
 
-function isBrowser(): boolean {
+export function isBrowser(): boolean {
     return typeof document !== "undefined"
 }
 
@@ -85,36 +85,36 @@ export function toHTML(input: UIContent): string {
 }
 
 function checkWindowEventRegistry(): void {
-    if (!window.gingerUIRegistry) {
-        window.gingerUIRegistry = {
+    if (!window.rueUIRegistry) {
+        window.rueUIRegistry = {
             handlers: new Map(),
             hoverState: new Map()
         }
     }
     if (!window.clickRegistry) {
-        window.clickRegistry = window.gingerUIRegistry.handlers
+        window.clickRegistry = window.rueUIRegistry.handlers
     }
     if (!window.dispatchClick) {
         window.dispatchClick = (id, elem) => {
-            let handler = window.gingerUIRegistry?.handlers.get(id)
+            let handler = window.rueUIRegistry?.handlers.get(id)
             if (typeof handler == "function") handler(elem)
         }
     }
     if (!window.dispatchHover) {
         window.dispatchHover = (id, elem) => {
-            let handler = window.gingerUIRegistry?.handlers.get(id)
+            let handler = window.rueUIRegistry?.handlers.get(id)
             if (typeof handler == "function") {
-                window.gingerUIRegistry?.hoverState.set(id, elem.style.cssText)
+                window.rueUIRegistry?.hoverState.set(id, elem.style.cssText)
                 handler(elem)
             }
         }
     }
     if (!window.dispatchHoverOut) {
         window.dispatchHoverOut = (id, elem) => {
-            let originalStyle = window.gingerUIRegistry?.hoverState.get(id)
+            let originalStyle = window.rueUIRegistry?.hoverState.get(id)
             if (originalStyle !== undefined) {
                 elem.style.cssText = originalStyle
-                window.gingerUIRegistry?.hoverState.delete(id)
+                window.rueUIRegistry?.hoverState.delete(id)
             }
         }
     }
@@ -190,7 +190,7 @@ export class UIElement {
 
             checkWindowEventRegistry()
             let id = "hov_" + Math.random().toString(36).substring(2, 11)
-            window.gingerUIRegistry?.handlers.set(id, input as UIHandler)
+            window.rueUIRegistry?.handlers.set(id, input as UIHandler)
             this.behaviors.onmouseenter = `window.dispatchHover('${id}', this);`
             this.behaviors.onmouseleave = `window.dispatchHoverOut('${id}', this);`
         },
@@ -203,7 +203,7 @@ export class UIElement {
 
             checkWindowEventRegistry()
             let id = "clk_" + Math.random().toString(36).substring(2, 11)
-            window.gingerUIRegistry?.handlers.set(id, input as UIHandler)
+            window.rueUIRegistry?.handlers.set(id, input as UIHandler)
             this.behaviors.onclick = `window.dispatchClick('${id}', this);`
         },
         contains: input => {
@@ -295,134 +295,5 @@ export class UIElement {
 
         if (this.self) return openingTag
         return `${openingTag}${this.content}</${this.tag}>`
-    }
-}
-
-export class Image extends UIElement {
-    constructor(imgURL: string, config: UIConfig = {}) {
-        super({
-            ...config,
-            src: imgURL
-        })
-        this.tag = "img"
-        this.self = true
-    }
-}
-
-export class Button extends UIElement {
-    constructor(content: UIContent, config: UIConfig = {}) {
-        super({
-            ...config,
-            content: content
-        })
-        this.tag = "button"
-    }
-}
-
-export class Rectangle extends UIElement {
-    constructor(config: UIConfig = {}) {
-        super(config)
-    }
-}
-
-export class Component extends UIElement {
-    constructor(content: unknown, config: UIConfig = {}) {
-        super({
-            ...config,
-            content: content
-        })
-    }
-}
-
-export class HStack extends UIElement {
-    constructor(elements: UIContent[], config: UIConfig = {}) {
-        super({
-            ...config,
-            display: "grid",
-            grid_template_columns: config.grid_template_columns ?? `repeat(${elements.length}, 1fr)`,
-            content: elements
-        })
-    }
-}
-
-export class VStack extends UIElement {
-    constructor(elements: UIContent[], config: UIConfig = {}) {
-        super({
-            ...config,
-            display: "grid",
-            grid_template_rows: config.grid_template_rows ?? `repeat(${elements.length}, auto)`,
-            content: elements
-        })
-    }
-}
-
-export class Wrapper extends UIElement {
-    constructor(content: UIContent, config: UIConfig = {}) {
-        super({
-            ...config,
-            content: content
-        })
-    }
-}
-
-export class StateStore {
-    #data: UIConfig = {}
-
-    constructor(init?: UIConfig) {
-        if (init) this.#data = init
-    }
-
-    #updateUI(): void {
-        if (!isBrowser()) return
-        document.querySelectorAll("[live_state]").forEach(elem => {
-            let stateId = elem.getAttribute("live_state")
-            if (stateId && typeof stateManager[stateId] == "function") {
-                elem.innerHTML = toHTML(stateManager[stateId]())
-            }
-        })
-    }
-
-    set(key: string, val: UIValue): void {
-        this.#data[key] = val
-        this.#updateUI()
-    }
-
-    get(key: string): UIValue {
-        return this.#data?.[key]
-    }
-
-    update(callback?: (data: UIConfig) => UIConfig | void): void {
-        if (!callback) {
-            this.#updateUI()
-            return
-        }
-
-        let response = callback(this.#data)
-        if (response) {
-            this.#data = response
-            this.#updateUI()
-            return
-        }
-
-        throw new Error("Error during state update")
-    }
-}
-
-export const classes: Record<string, UIConfig> = {
-    heading: {
-        font_size: "2.4rem",
-        font_weight: "700"
-    },
-    center: {
-        display: "flex",
-        align_items: "center",
-        justify_content: "center"
-    },
-    mutedUppercase: {
-        font_size: "0.9rem",
-        font_weight: "700",
-        text_transform: "uppercase",
-        letter_spacing: "0.3pt",
-        opacity: 0.6
     }
 }
