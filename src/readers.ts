@@ -1,14 +1,18 @@
 //
 // readers.ts
 //
-// Readers consume multi-line Rue blocks
-// and add their parsed output to the
-// active compiler context.
+// collection of capture methods
+// to gather functions, components,
+// interfaces, and raw javascript
 //
 
 import { countRueScopeDepth, extractFunctionCalls, stripLineComment } from './helpers.js';
 import * as RueUIRuntime from './interface.js';
 import { compileComponentBody, compileFunctionBody, compileRueOutputBody } from './bodies.js';
+
+// --- --- ---
+//    TYPES
+// --- --- ---
 
 export type RueCallable = (...params: unknown[]) => unknown
 export type RueFunctionMap = Record<string, RueFunctionDefinition>
@@ -36,6 +40,10 @@ export interface RueReaderContext {
     buildRunnableContext(): Record<string, unknown>
 }
 
+// --- --- ---
+// RAW JAVASCRIPT
+// --- --- ---
+
 export function captureRawJS(lines: string[], reader: RueReaderContext): void {
     let body: string[] = []
     let depth = countRueScopeDepth(stripLineComment(lines[reader.currentLineIndex]).trim())
@@ -57,6 +65,10 @@ export function captureRawJS(lines: string[], reader: RueReaderContext): void {
     reader.currentLineIndex = lines.length - 1
     reader.throwError("raw js", "unclosed raw JavaScript block")
 }
+
+// --- --- ---
+// FUNCTIONS
+// --- --- ---
 
 export function addFunction(lines: string[], reader: RueReaderContext): void {
     let startIndex = reader.currentLineIndex
@@ -93,6 +105,10 @@ export function addFunction(lines: string[], reader: RueReaderContext): void {
     }
 }
 
+// --- --- ---
+// INTERFACES
+// --- --- ---
+
 export function getInterface(lines: string[], reader: RueReaderContext): void {
     let startIndex = reader.currentLineIndex
     let startLine = stripLineComment(lines[startIndex]).trim()
@@ -115,28 +131,30 @@ export function getInterface(lines: string[], reader: RueReaderContext): void {
     }
 }
 
+// --- --- ---
+// HELPERS
+// --- --- ---
+
 function readBlockLines(lines: string[], reader: RueReaderContext, startIndex: number): RueCapturedLine[] {
     let body: RueCapturedLine[] = []
-    let startLine = stripLineComment(lines[startIndex]).trim()
-    let depth = countRueScopeDepth(startLine)
+    let depth = countRueScopeDepth(stripLineComment(lines[startIndex]).trim())
 
     for (let i = startIndex + 1; i < lines.length; i++) {
         let rawLine = stripLineComment(lines[i])
-        let currLine = rawLine.trim()
-        if (!currLine) continue
+        let text = rawLine.trim()
+        if (!text) continue
 
-        let nextDepth = depth + countRueScopeDepth(currLine)
-        if (nextDepth <= 0) {
+        depth += countRueScopeDepth(text)
+        if (depth <= 0) {
             reader.currentLineIndex = i
             return body
         }
 
         body.push({
-            text: currLine,
+            text,
             indent: countIndent(rawLine),
-            depth: nextDepth
+            depth,
         })
-        depth = nextDepth
     }
 
     reader.currentLineIndex = lines.length - 1
