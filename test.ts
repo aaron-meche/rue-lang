@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
-import runRue, { RueFile, RueRouter, ruePlugin, ruePreprocess } from "./src/index.js";
+import { RueFile, RueRouter, ruePreprocess } from "./src/index.js";
 import { stripLineComment } from "./src/helpers.js";
 
 interface CompileResult {
@@ -87,10 +87,6 @@ function getFailureMessage(error: unknown): string {
 }
 
 function runPackageIntegrationTests(): void {
-    let toolkit = runRue()
-    assert.equal(typeof toolkit.style, "function", "default export should include the Rue preprocessor")
-    assert.equal(typeof toolkit.transform, "function", "default export should include the Vite plugin")
-
     let preprocessor = ruePreprocess()
     let skipped = preprocessor.style({
         content: "def accent: royalblue",
@@ -103,12 +99,6 @@ function runPackageIntegrationTests(): void {
         attributes: { lang: "rue" },
     })
     assert.equal(preprocessed?.code.includes("--accent: royalblue;"), true, "preprocessor should compile rue CSS")
-
-    let plugin = ruePlugin()
-    assert.equal(plugin.transform("body { color: red }", "/src/app.css"), null, "vite plugin should ignore non-rue files")
-
-    let transformed = plugin.transform("def accent: royalblue", "/src/lib/main.rue?import")
-    assert.equal(transformed?.code.includes("--accent: royalblue;"), true, "vite plugin should compile rue imports")
 }
 
 function runRouterTests(): void {

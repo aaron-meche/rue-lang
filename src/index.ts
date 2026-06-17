@@ -7,7 +7,6 @@
 
 import { RueFile } from './compiler.js'
 import { RueRouter } from './router.js'
-import createRueVitePlugin, { type RueVitePlugin } from './vite-plugin.js'
 
 export { RueFile, RueRouter }
 export * from './interface.js'
@@ -26,8 +25,6 @@ export interface RuePreprocessor {
     style(args: RuePreprocessorStyleArgs): RuePreprocessorResult | void
 }
 
-export interface RuePluginToolkit extends RuePreprocessor, RueVitePlugin {}
-
 export function ruePreprocess(): RuePreprocessor {
     return {
         style({ content, attributes }) {
@@ -40,14 +37,3 @@ export function ruePreprocess(): RuePreprocessor {
         }
     }
 }
-
-export const ruePlugin = createRueVitePlugin
-
-export function runRue(): RuePluginToolkit {
-    return {
-        ...createRueVitePlugin(),
-        ...ruePreprocess(),
-    }
-}
-
-export default runRue

@@ -257,21 +257,9 @@ Interface {
 console.log(file.getHTML())
 ```
 
-## Vite And Svelte CSS Integration
+## Svelte CSS Integration
 
-Rue still includes the earlier stylesheet-oriented integrations.
-
-Vite:
-
-```js
-import ruePlugin from "rue-lang"
-
-export default {
-    plugins: [ruePlugin()]
-}
-```
-
-Svelte style preprocessing:
+Rue includes stylesheet preprocessing for Svelte style blocks:
 
 ```js
 import { ruePreprocess } from "rue-lang"
@@ -289,7 +277,7 @@ export default {
 </style>
 ```
 
-These integrations currently compile Rue style output, not full static routes.
+This integration currently compiles Rue style output, not full static routes.
 
 ## Project Structure
 
@@ -297,7 +285,6 @@ These integrations currently compile Rue style output, not full static routes.
 src/compiler.ts       RueFile parser/compiler
 src/interface.ts      UI runtime classes
 src/router.ts         Static route builder
-src/vite-plugin.ts    Vite stylesheet plugin
 dev/web/              Local Rue showcase source
 dev/out/              Generated local HTML output
 rue.tmLanguage.json   VS Code TextMate grammar
