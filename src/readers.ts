@@ -8,6 +8,7 @@
 
 import { countRueScopeDepth, extractFunctionCalls, stripLineComment } from './helpers.js';
 import * as RueUIRuntime from './interface.js';
+import * as RueUIComponents from './interface-components.js';
 import { compileComponentBody, compileFunctionBody, compileRueOutputBody } from './bodies.js';
 
 // --- --- ---
@@ -38,6 +39,10 @@ export interface RueReaderContext {
     setInterface(value: RueInterface): void
     throwError(label: string, error: unknown): void
     buildRunnableContext(): Record<string, unknown>
+}
+
+function getRuntimeNames(): string[] {
+    return [...Object.keys(RueUIRuntime), ...Object.keys(RueUIComponents)]
 }
 
 // --- --- ---
@@ -80,7 +85,7 @@ export function addFunction(lines: string[], reader: RueReaderContext): void {
     if (!startLine.includes("{")) { reader.throwError(signature.name, "missing opening brace"); return }
 
     let localNames = signature.params.map(param => param.split("=")[0].trim())
-    let knownNames = [...localNames, ...Object.keys(reader.functionMap), ...Object.keys(RueUIRuntime), "__rueState"]
+    let knownNames = [...localNames, ...Object.keys(reader.functionMap), ...getRuntimeNames(), "__rueState"]
     let isComponent = firstWord == "component"
     let capturedLines = readBlockLines(lines, reader, startIndex)
     let body = isComponent
@@ -115,7 +120,7 @@ export function getInterface(lines: string[], reader: RueReaderContext): void {
 
     if (!startLine.includes("{")) { reader.throwError("Interface", "missing opening brace"); return }
 
-    let knownNames = [...Object.keys(reader.functionMap), ...Object.keys(RueUIRuntime), "__rueState"]
+    let knownNames = [...Object.keys(reader.functionMap), ...getRuntimeNames(), "__rueState"]
     let body = compileRueOutputBody(readBlockLines(lines, reader, startIndex), knownNames)
 
     try {

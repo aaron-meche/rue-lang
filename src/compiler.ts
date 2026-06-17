@@ -14,6 +14,7 @@ import {
     type RueStateMap
 } from './helpers.js';
 import * as RueUIRuntime from './interface.js';
+import * as RueUIComponents from './interface-components.js';
 import { UIElement } from './interface.js';
 import {
     captureRawJS, addFunction,
@@ -28,6 +29,13 @@ import {
 export type RueCSSMap = Record<string, string[]>
 export type { RueFunctionSignature, RueStateMap } from './helpers.js';
 export type { RueCallable, RueCapturedLine, RueFunctionDefinition, RueFunctionMap, RueInterface } from './readers.js';
+
+function buildRueRuntime(): Record<string, unknown> {
+    return {
+        ...RueUIRuntime,
+        ...RueUIComponents,
+    }
+}
 
 //
 // Main RueFile Class
@@ -228,7 +236,7 @@ export class RueFile {
 
     #buildRunnableContext(): Record<string, unknown> {
         return {
-            ...buildRunnableContext(RueUIRuntime, this.#funcMap),
+            ...buildRunnableContext(buildRueRuntime(), this.#funcMap),
             Interface: this.#interface,
             __rueState: new RueUIRuntime.StateStore(this.#stateMap)
         }

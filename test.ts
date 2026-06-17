@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
-import { RueFile, RueRouter, ruePreprocess } from "./src/index.js";
+import { Button, RueFile, RueRouter, StateStore, UIElement, Wrapper, resetStateRenderers, ruePreprocess } from "./src/index.js";
 import { stripLineComment } from "./src/helpers.js";
 
 interface CompileResult {
@@ -87,6 +87,10 @@ function getFailureMessage(error: unknown): string {
 }
 
 function runPackageIntegrationTests(): void {
+    assert.equal(typeof Button, "function", "package root should export Button")
+    assert.equal(typeof Wrapper, "function", "package root should export Wrapper")
+    assert.equal(typeof StateStore, "function", "package root should export StateStore")
+
     let preprocessor = ruePreprocess()
     let skipped = preprocessor.style({
         content: "def accent: royalblue",
@@ -99,6 +103,60 @@ function runPackageIntegrationTests(): void {
         attributes: { lang: "rue" },
     })
     assert.equal(preprocessed?.code.includes("--accent: royalblue;"), true, "preprocessor should compile rue CSS")
+}
+
+function runStateStoreTests(): void {
+    let hadDocument = "document" in globalThis
+    let previousDocument = globalThis.document
+    let rendered = ""
+
+    resetStateRenderers()
+
+    try {
+        let store = new StateStore({ count: 1 })
+        let element = new UIElement({
+            content: () => `Count: ${store.get("count")}`,
+        })
+
+        assertIncludes(element.getHTML(), "Count: 1", "state store initial render")
+        assertIncludes(element.getHTML(), "live_state=\"state_0\"", "state store live id")
+
+        Object.defineProperty(globalThis, "document", {
+            configurable: true,
+            value: {
+                querySelectorAll(selector: string) {
+                    assert.equal(selector, "[live_state]", "state store should query live state nodes")
+                    return [{
+                        getAttribute(name: string) {
+                            return name == "live_state" ? "state_0" : null
+                        },
+                        set innerHTML(value: string) {
+                            rendered = value
+                        },
+                        get innerHTML() {
+                            return rendered
+                        },
+                    }]
+                },
+            },
+        })
+
+        store.set("count", 2)
+
+        assert.equal(rendered, "Count: 2", "state store should rerender registered state content")
+    }
+    finally {
+        resetStateRenderers()
+        if (hadDocument) {
+            Object.defineProperty(globalThis, "document", {
+                configurable: true,
+                value: previousDocument,
+            })
+        }
+        else {
+            delete (globalThis as { document?: Document }).document
+        }
+    }
 }
 
 function runRouterTests(): void {
@@ -133,6 +191,10 @@ const tests: TestCase[] = [
     {
         name: "package integrations",
         run: runPackageIntegrationTests,
+    },
+    {
+        name: "state store updates live content",
+        run: runStateStoreTests,
     },
     {
         name: "line comments preserve urls",

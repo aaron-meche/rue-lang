@@ -10,6 +10,7 @@ import { RueRouter } from './router.js'
 
 export { RueFile, RueRouter }
 export * from './interface.js'
+export * from './interface-components.js'
 export * from './router.js'
 
 export interface RuePreprocessorResult {
