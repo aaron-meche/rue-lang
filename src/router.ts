@@ -1,8 +1,18 @@
 //
-// Rue Router
+// router.ts
 //
-// Builds static HTML routes from a web directory.
+// rue-lang directory router
 //
+// builds static HTML routes 
+// from target root directory
+//
+// --- --- --- --- --- --- ---
+//
+// example usage (builder.js):
+//
+// import { RueRouter } from "rue-lang"
+// new RueRouter("source/directory", "output/directory")
+// 
 
 import fs from "fs";
 import path from "path";
@@ -20,17 +30,17 @@ export class RueRouter {
     routes: RueRoute[] = []
 
     constructor(
-        public webRoot: string = "./web",
-        public outputRoot: string = "./out",
+        public sourceRoot: string = "./src", 
+        public outputRoot: string = "./out", 
         autoBuild: boolean = true
     ) {
         if (autoBuild) this.build()
     }
 
     build(): RueRoute[] {
-        let layoutPath = path.join(this.webRoot, "layout.rue")
+        let layoutPath = path.join(this.sourceRoot, "layout.rue")
         let layoutText = fs.existsSync(layoutPath) ? readFileText(layoutPath) : ""
-        let pageFiles = this.#findPageFiles(this.webRoot)
+        let pageFiles = this.#findPageFiles(this.sourceRoot)
 
         this.routes = pageFiles.map(pagePath => this.#buildRoute(pagePath, layoutText))
         return this.routes
@@ -74,7 +84,7 @@ export class RueRouter {
     }
 
     #routePath(pagePath: string): string {
-        let routeDir = path.relative(this.webRoot, path.dirname(pagePath))
+        let routeDir = path.relative(this.sourceRoot, path.dirname(pagePath))
         if (!routeDir) return "/"
         return "/" + routeDir.split(path.sep).join("/")
     }
